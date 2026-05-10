@@ -1,0 +1,25 @@
+service:
+  name: pulselens-tenant-service
+server:
+  port: ":8081"
+log:
+  level: debug
+  format: json
+  request: true
+  response: false
+postgres:
+  dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+redis:
+  clusterMode: false
+  hosts:
+    - "redis:6379"
+  db: 0
+jwt:
+  secret: "pulselens-local-secret"
+  expiryMinutes: 720
+internal:
+  token: "pulselens-internal-token"
+runtime:
+  heartbeatIntervalSeconds: 5
+  heartbeatTTLSeconds: 15
+

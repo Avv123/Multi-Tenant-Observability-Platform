@@ -1,0 +1,42 @@
+service:
+  name: pulselens-query-service
+server:
+  port: ":8084"
+postgres:
+  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+clickhouse:
+  enabled: true
+  baseUrl: "http://localhost:8123"
+  database: "pulselens"
+  username: "omniful"
+  password: "omniful"
+redis:
+  hosts:
+    - "localhost:6379"
+  db: 0
+kafka:
+  brokers:
+    - "localhost:9092"
+  groups:
+    processing: "pulselens-processing-v1"
+  topics:
+    logs: "pulselens.logs.v1"
+    metrics: "pulselens.metrics.v1"
+    traces: "pulselens.traces.v1"
+    custom: "pulselens.custom.v1"
+    retry: "pulselens.retry.v1"
+    retryScheduled: "pulselens.retry.scheduled.v1"
+jwt:
+  secret: "pulselens-local-secret"
+ui:
+  dir: "../pulselens-ui/dist"
+runtime:
+  heartbeatIntervalSeconds: 5
+  heartbeatTTLSeconds: 15
+backpressure:
+  logsMaxPending: 2000
+  metricsMaxPending: 2000
+  tracesMaxPending: 2000
+  customMaxPending: 1000
+cache:
+  ttlSeconds: 5

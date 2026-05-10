@@ -1,0 +1,35 @@
+{{- $root := . -}}
+{{- range $name, $image := .Values.images }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pulselens-{{ $name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pulselens-{{ $name }}
+  template:
+    metadata:
+      labels:
+        app: pulselens-{{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $image }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          env:
+            - name: CONFIG_PATH
+              value: /app/configs/config.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /app/configs
+          ports:
+            - containerPort: {{ index $root.Values.services $name "port" }}
+      volumes:
+        - name: config
+          configMap:
+            name: pulselens-{{ $name }}-config
+---
+{{- end }}
+

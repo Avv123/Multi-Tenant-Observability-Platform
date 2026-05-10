@@ -1,0 +1,29 @@
+service:
+  name: pulselens-alerting-service
+server:
+  port: ":8085"
+postgres:
+  dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+clickhouse:
+  enabled: true
+  baseUrl: "http://clickhouse:8123"
+  database: "pulselens"
+  username: "omniful"
+  password: "omniful"
+redis:
+  hosts:
+    - "redis:6379"
+  db: 0
+jwt:
+  secret: "pulselens-local-secret"
+evaluation:
+  intervalSeconds: 2
+  lockTTLSeconds: 25
+runtime:
+  heartbeatIntervalSeconds: 5
+  heartbeatTTLSeconds: 15
+smtp:
+  host: "mailhog"
+  port: 1025
+  from: "pulselens@local"
+  subjectPrefix: "[PulseLens]"

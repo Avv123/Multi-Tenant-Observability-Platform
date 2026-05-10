@@ -1,0 +1,6 @@
+.git
+data
+services/pulselens-ui/node_modules
+services/pulselens-ui/dist
+**/.DS_Store
+

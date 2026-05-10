@@ -1,0 +1,226 @@
+global:
+  imagePullPolicy: IfNotPresent
+
+images:
+  tenant: pulselens-tenant-service:latest
+  ingest: pulselens-ingest-service:latest
+  processing: pulselens-processing-service:latest
+  query: pulselens-query-service:latest
+  alerting: pulselens-alerting-service:latest
+  archive: pulselens-archive-service:latest
+
+services:
+  tenant:
+    port: 8081
+  ingest:
+    port: 8082
+  processing:
+    port: 8083
+  query:
+    port: 8084
+  alerting:
+    port: 8085
+  archive:
+    port: 8086
+
+configs:
+  tenant: |
+    service:
+      name: pulselens-tenant-service
+    server:
+      port: ":8081"
+    postgres:
+      dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+    redis:
+      hosts: ["redis:6379"]
+      db: 0
+    jwt:
+      secret: "pulselens-local-secret"
+      expiryMinutes: 720
+    internal:
+      token: "pulselens-internal-token"
+    runtime:
+      heartbeatIntervalSeconds: 5
+      heartbeatTTLSeconds: 15
+  ingest: |
+    service:
+      name: pulselens-ingest-service
+    server:
+      port: ":8082"
+    redis:
+      hosts: ["redis:6379"]
+      db: 0
+    kafka:
+      brokers: ["kafka:9092"]
+      topics:
+        logs: "pulselens.logs.v1"
+        metrics: "pulselens.metrics.v1"
+        traces: "pulselens.traces.v1"
+        custom: "pulselens.custom.v1"
+    tenantService:
+      baseUrl: "http://pulselens-tenant:8081"
+      internalToken: "pulselens-internal-token"
+    rateLimit:
+      windowSeconds: 60
+      defaultPerWindow: 500
+    partitioning:
+      shardBuckets: 32
+    runtime:
+      heartbeatIntervalSeconds: 5
+      heartbeatTTLSeconds: 15
+    backpressure:
+      logsMaxPending: 2000
+      metricsMaxPending: 2000
+      tracesMaxPending: 2000
+      customMaxPending: 1000
+  processing: |
+    service:
+      name: pulselens-processing-service
+    server:
+      port: ":8083"
+    postgres:
+      dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+    clickhouse:
+      enabled: true
+      baseUrl: "http://clickhouse:8123"
+      database: "pulselens"
+      username: "omniful"
+      password: "omniful"
+    redis:
+      hosts: ["redis:6379"]
+      db: 0
+    kafka:
+      brokers: ["kafka:9092"]
+      groupId: "pulselens-processing-v1"
+      topics:
+        logs: "pulselens.logs.v1"
+        metrics: "pulselens.metrics.v1"
+        traces: "pulselens.traces.v1"
+        custom: "pulselens.custom.v1"
+        retry: "pulselens.retry.v1"
+        retryScheduled: "pulselens.retry.scheduled.v1"
+    retry:
+      maxCount: 3
+      baseDelaySeconds: 15
+    retention:
+      telemetryDays: 7
+      archiveDays: 14
+      cleanupIntervalSeconds: 20
+    archive:
+      enabled: true
+      endpoint: "http://minio:9000"
+      region: "us-east-1"
+      accessKey: "minioadmin"
+      secretKey: "minioadmin"
+      bucket: "pulselens-archive"
+      prefix: "raw"
+      forcePathStyle: true
+    replay:
+      pollSeconds: 3
+    runtime:
+      heartbeatIntervalSeconds: 5
+      heartbeatTTLSeconds: 15
+    backpressure:
+      logsMaxPending: 2000
+      metricsMaxPending: 2000
+      tracesMaxPending: 2000
+      customMaxPending: 1000
+  query: |
+    service:
+      name: pulselens-query-service
+    server:
+      port: ":8084"
+    postgres:
+      dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+    clickhouse:
+      enabled: true
+      baseUrl: "http://clickhouse:8123"
+      database: "pulselens"
+      username: "omniful"
+      password: "omniful"
+    redis:
+      hosts: ["redis:6379"]
+      db: 0
+    kafka:
+      brokers: ["kafka:9092"]
+      groups:
+        processing: "pulselens-processing-v1"
+      topics:
+        logs: "pulselens.logs.v1"
+        metrics: "pulselens.metrics.v1"
+        traces: "pulselens.traces.v1"
+        custom: "pulselens.custom.v1"
+        retry: "pulselens.retry.v1"
+        retryScheduled: "pulselens.retry.scheduled.v1"
+    jwt:
+      secret: "pulselens-local-secret"
+    ui:
+      dir: "/app/ui"
+    runtime:
+      heartbeatIntervalSeconds: 5
+      heartbeatTTLSeconds: 15
+    backpressure:
+      logsMaxPending: 2000
+      metricsMaxPending: 2000
+      tracesMaxPending: 2000
+      customMaxPending: 1000
+    cache:
+      ttlSeconds: 5
+  alerting: |
+    service:
+      name: pulselens-alerting-service
+    server:
+      port: ":8085"
+    postgres:
+      dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+    redis:
+      hosts: ["redis:6379"]
+      db: 0
+    jwt:
+      secret: "pulselens-local-secret"
+    evaluation:
+      intervalSeconds: 2
+      lockTTLSeconds: 25
+    runtime:
+      heartbeatIntervalSeconds: 5
+      heartbeatTTLSeconds: 15
+    smtp:
+      host: "mailhog"
+      port: 1025
+      from: "pulselens@local"
+      subjectPrefix: "[PulseLens]"
+  archive: |
+    service:
+      name: pulselens-archive-service
+    server:
+      port: ":8086"
+    postgres:
+      dsn: "host=postgres user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+    redis:
+      hosts: ["redis:6379"]
+      db: 0
+    kafka:
+      brokers: ["kafka:9092"]
+      topics:
+        logs: "pulselens.logs.v1"
+        metrics: "pulselens.metrics.v1"
+        traces: "pulselens.traces.v1"
+        custom: "pulselens.custom.v1"
+    jwt:
+      secret: "pulselens-local-secret"
+    archive:
+      enabled: true
+      endpoint: "http://minio:9000"
+      region: "us-east-1"
+      accessKey: "minioadmin"
+      secretKey: "minioadmin"
+      bucket: "pulselens-archive"
+      prefix: "raw"
+      forcePathStyle: true
+    replay:
+      pollSeconds: 3
+      lockTTLSeconds: 20
+    runtime:
+      heartbeatIntervalSeconds: 5
+      heartbeatTTLSeconds: 15
+

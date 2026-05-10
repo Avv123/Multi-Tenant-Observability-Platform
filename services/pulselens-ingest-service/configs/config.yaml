@@ -1,0 +1,32 @@
+service:
+  name: pulselens-ingest-service
+server:
+  port: ":8082"
+redis:
+  hosts:
+    - "localhost:6379"
+  db: 0
+kafka:
+  brokers:
+    - "localhost:9092"
+  topics:
+    logs: "pulselens.logs.v1"
+    metrics: "pulselens.metrics.v1"
+    traces: "pulselens.traces.v1"
+    custom: "pulselens.custom.v1"
+tenantService:
+  baseUrl: "http://localhost:8081"
+  internalToken: "pulselens-internal-token"
+rateLimit:
+  windowSeconds: 60
+  defaultPerWindow: 500
+partitioning:
+  shardBuckets: 32
+runtime:
+  heartbeatIntervalSeconds: 5
+  heartbeatTTLSeconds: 15
+backpressure:
+  logsMaxPending: 2000
+  metricsMaxPending: 2000
+  tracesMaxPending: 2000
+  customMaxPending: 1000

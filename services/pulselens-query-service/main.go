@@ -1,0 +1,54 @@
+package main
+
+import (
+	"context"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/omniful/pulselens-platform/config"
+	"github.com/omniful/pulselens-platform/httpserver"
+	"github.com/omniful/pulselens-platform/idgen"
+	"github.com/omniful/pulselens-platform/logging"
+	platformruntime "github.com/omniful/pulselens-platform/runtime"
+	appinit "github.com/omniful/pulselens-query-service/init"
+	queryredis "github.com/omniful/pulselens-query-service/pkg/redis"
+	"github.com/omniful/pulselens-query-service/router"
+)
+
+func main() {
+	if err := config.MustLoadFromEnv(); err != nil {
+		panic(err)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	idgen.Configure(idgen.NodeIDFromServiceName(config.GetString("service.name")))
+	appinit.Initialize(ctx)
+	platformruntime.Start(ctx, queryredis.Get(), platformruntime.HeartbeatOptions{
+		ServiceName: config.GetString("service.name"),
+		Mode:        "http",
+		Port:        config.GetString("server.port"),
+		Metadata: map[string]string{
+			"module": "query",
+		},
+		Interval: time.Duration(config.GetInt("runtime.heartbeatIntervalSeconds")) * time.Second,
+		TTL:      time.Duration(config.GetInt("runtime.heartbeatTTLSeconds")) * time.Second,
+	})
+
+	server := httpserver.New(config.GetString("server.port"))
+	if err := router.Initialize(ctx, server); err != nil {
+		logging.Fatalf("failed to initialize query router: %v", err)
+	}
+
+	go func() {
+		<-ctx.Done()
+		_ = server.Shutdown(context.Background())
+	}()
+
+	logging.Infof("starting query-service on port %s", config.GetString("server.port"))
+	if err := server.Start(); err != nil && err.Error() != "http: Server closed" {
+		logging.Fatalf("failed to start query-service: %v", err)
+	}
+}

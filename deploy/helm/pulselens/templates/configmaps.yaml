@@ -1,0 +1,11 @@
+{{- range $name, $config := .Values.configs }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pulselens-{{ $name }}-config
+data:
+  config.yaml: |
+{{ $config | indent 4 }}
+---
+{{- end }}
+
