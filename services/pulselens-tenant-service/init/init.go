@@ -26,7 +26,7 @@ func initializeLog() {
 func initializeRedis() {
 	hosts := config.GetStringSlice("redis.hosts")
 	if len(hosts) == 0 {
-		hosts = []string{"localhost:6379"}
+		hosts = []string{"localhost:6381"}
 	}
 	client := platformredis.New(hosts[0], config.GetInt("redis.db"))
 	tenantredis.Set(client)

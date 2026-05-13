@@ -7,7 +7,7 @@ import urllib.request
 BASE_TENANT = "http://127.0.0.1:8081"
 BASE_QUERY = "http://127.0.0.1:8084"
 INTERNAL_TOKEN = "pulselens-internal-token"
-REDIS_CONTAINER = "redis"
+REDIS_CONTAINER = "pulselens-redis"
 
 
 def req(url, method="GET", body=None, headers=None):
@@ -81,24 +81,20 @@ def wait_for_dependency_row(token, name, timeout=20):
 def main():
     token = bootstrap_token()
     before = dependency_row(token, "redis")
-    docker("pause", REDIS_CONTAINER)
+    docker("stop", REDIS_CONTAINER)
     time.sleep(2)
-    paused_state = docker_output("inspect", "-f", "{{.State.Status}}/{{.State.Paused}}", REDIS_CONTAINER)
-    observation_gap = False
+    down_state = docker_output("inspect", "-f", "{{.State.Status}}/{{.State.Paused}}", REDIS_CONTAINER)
     try:
         down = wait_for_status(token, "redis", "down", timeout=15)
-    except RuntimeError:
-        down = wait_for_dependency_row(token, "redis", timeout=5)
-        observation_gap = True
-    docker("unpause", REDIS_CONTAINER)
+    finally:
+        docker("start", REDIS_CONTAINER)
     time.sleep(5)
     recovered = wait_for_status(token, "redis", "healthy")
     print(json.dumps({
         "before": before,
-        "paused_state": paused_state,
+        "down_state": down_state,
         "down": down,
         "recovered": recovered,
-        "observation_gap": observation_gap,
     }, indent=2))
 
 

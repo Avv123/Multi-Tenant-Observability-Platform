@@ -129,6 +129,9 @@ export default function DashboardPage({ state, onNotification }) {
     replayJobs: [],
     replayStats: null,
     incidentComments: [],
+    incidentTimeline: [],
+    incidentDeliveries: [],
+    selectedIncident: null,
     users: [],
     services: [],
     policies: [],
@@ -164,14 +167,18 @@ export default function DashboardPage({ state, onNotification }) {
   const [dashboardForm, setDashboardForm] = useState({
     name: "Operations Overview",
     description: "Starter dashboard for PulseLens",
+    default_time_range: "120m",
   });
   const [dashboardBuilder, setDashboardBuilder] = useState({
     dashboard_id: "",
+    widget_id: "",
     title: "Error Trend",
     type: "chart",
     dataset: "log_severity",
     chart_type: "bar",
     metric: "",
+    layout_w: "1",
+    layout_h: "1",
   });
   const [channelForm, setChannelForm] = useState({
     name: "Ops Webhook Channel",
@@ -191,6 +198,12 @@ export default function DashboardPage({ state, onNotification }) {
   const [assignForm, setAssignForm] = useState({
     incidentId: "",
     assignedTo: "",
+  });
+  const [incidentFilters, setIncidentFilters] = useState({
+    status: "",
+    assigned_to: "",
+    service_id: "",
+    severity: "",
   });
   const [userForm, setUserForm] = useState({
     name: "Viewer User",
@@ -231,7 +244,7 @@ export default function DashboardPage({ state, onNotification }) {
         queryApi.tracesWithFilters(token, filters),
         alertingApi.listRules(token),
         alertingApi.listPolicies(token),
-        alertingApi.listIncidents(token),
+        alertingApi.listIncidents(token, incidentFilters),
         tenantApi.listAuditLogs(state.tenantId, token),
         queryApi.listSavedQueries(token),
         queryApi.listDashboards(token),
@@ -264,6 +277,9 @@ export default function DashboardPage({ state, onNotification }) {
         replayJobs,
         replayStats,
         incidentComments: [],
+        incidentTimeline: [],
+        incidentDeliveries: [],
+        selectedIncident: null,
         users,
         services,
         logSeverity,
@@ -277,6 +293,7 @@ export default function DashboardPage({ state, onNotification }) {
       setDashboardBuilder((current) => ({
         ...current,
         dashboard_id: current.dashboard_id || dashboards[0]?.id || "",
+        widget_id: "",
       }));
     } catch (error) {
       onNotification(error.message, "error");
@@ -293,7 +310,7 @@ export default function DashboardPage({ state, onNotification }) {
     if (token && state.tenantId) {
       loadDashboard();
     }
-  }, [filterForm.lookback_minutes, filterForm.service_id, filterForm.environment, filterForm.severity, filterForm.metric_name, filterForm.search, filterForm.trace_id]);
+  }, [filterForm.lookback_minutes, filterForm.service_id, filterForm.environment, filterForm.severity, filterForm.metric_name, filterForm.search, filterForm.trace_id, incidentFilters.status, incidentFilters.assigned_to, incidentFilters.service_id, incidentFilters.severity]);
 
   async function handleIngest(kind) {
     try {
@@ -369,11 +386,12 @@ export default function DashboardPage({ state, onNotification }) {
       await queryApi.createDashboard(token, {
         name: dashboardForm.name,
         description: dashboardForm.description,
+        default_time_range: dashboardForm.default_time_range,
         layout: { columns: 2 },
         widgets: [
-          { type: "stat", metric: "log_count" },
-          { type: "stat", metric: "trace_count" },
-          { type: "table", dataset: "service_health" },
+          { id: `widget-${Date.now()}-1`, type: "stat", metric: "log_count", title: "Log Count", layout: { w: 1, h: 1 }, filters: {} },
+          { id: `widget-${Date.now()}-2`, type: "stat", metric: "trace_count", title: "Trace Count", layout: { w: 1, h: 1 }, filters: {} },
+          { id: `widget-${Date.now()}-3`, type: "table", dataset: "service_health", title: "Service Health", layout: { w: 2, h: 1 }, filters: {} },
         ],
       });
       onNotification("Dashboard created.");
@@ -390,22 +408,57 @@ export default function DashboardPage({ state, onNotification }) {
       if (!selected) {
         throw new Error("select a dashboard first");
       }
-      const widgets = parseJSONSafe(selected.widgets, []);
-      widgets.push({
-        type: dashboardBuilder.type,
+      const widgetPayload = {
         title: dashboardBuilder.title,
+        type: dashboardBuilder.type,
         dataset: dashboardBuilder.dataset,
         chart_type: dashboardBuilder.chart_type,
         metric: dashboardBuilder.metric,
         filters: filterPayload(filterForm),
-      });
+        layout: {
+          w: Number(dashboardBuilder.layout_w || 1),
+          h: Number(dashboardBuilder.layout_h || 1),
+        },
+      };
+      if (dashboardBuilder.widget_id) {
+        await queryApi.updateDashboardWidget(token, selected.id, dashboardBuilder.widget_id, widgetPayload);
+        onNotification("Dashboard widget updated.");
+      } else {
+        const widgets = parseJSONSafe(selected.widgets, []);
+        widgets.push({
+          id: `widget-${Date.now()}`,
+          ...widgetPayload,
+        });
+        await queryApi.updateDashboard(token, selected.id, {
+          name: selected.name,
+          description: selected.description,
+          default_time_range: selected.default_time_range || "120m",
+          layout: parseJSONSafe(selected.layout, { columns: 2 }),
+          widgets,
+        });
+        onNotification("Dashboard widget saved.");
+      }
+      await loadDashboard();
+    } catch (error) {
+      onNotification(error.message, "error");
+    }
+  }
+
+  async function handleUpdateDashboardDetails(event) {
+    event.preventDefault();
+    try {
+      const selected = data.dashboards.find((row) => row.id === dashboardBuilder.dashboard_id);
+      if (!selected) {
+        throw new Error("select a dashboard first");
+      }
       await queryApi.updateDashboard(token, selected.id, {
-        name: selected.name,
-        description: selected.description,
+        name: dashboardForm.name,
+        description: dashboardForm.description,
+        default_time_range: dashboardForm.default_time_range,
         layout: parseJSONSafe(selected.layout, { columns: 2 }),
-        widgets,
+        widgets: parseJSONSafe(selected.widgets, []),
       });
-      onNotification("Dashboard widget saved.");
+      onNotification("Dashboard updated.");
       await loadDashboard();
     } catch (error) {
       onNotification(error.message, "error");
@@ -545,14 +598,30 @@ export default function DashboardPage({ state, onNotification }) {
     }
   }
 
-  async function loadIncidentComments(incidentId) {
+  async function loadIncidentDetail(incidentId) {
     try {
-      const comments = await alertingApi.listIncidentComments(token, incidentId);
+      const [incident, comments, timeline, deliveries] = await Promise.all([
+        alertingApi.getIncident(token, incidentId),
+        alertingApi.listIncidentComments(token, incidentId),
+        alertingApi.incidentTimeline(token, incidentId),
+        alertingApi.incidentDeliveries(token, incidentId),
+      ]);
+      setAssignForm((current) => ({ ...current, incidentId }));
       setCommentForm((current) => ({ ...current, incidentId }));
-      setData((current) => ({ ...current, incidentComments: comments }));
+      setData((current) => ({
+        ...current,
+        selectedIncident: incident,
+        incidentComments: comments,
+        incidentTimeline: timeline,
+        incidentDeliveries: deliveries,
+      }));
     } catch (error) {
       onNotification(error.message, "error");
     }
+  }
+
+  async function loadIncidentComments(incidentId) {
+    await loadIncidentDetail(incidentId);
   }
 
   const stats = useMemo(() => {
@@ -628,6 +697,71 @@ export default function DashboardPage({ state, onNotification }) {
 
   const selectedDashboard = useMemo(() => data.dashboards.find((row) => row.id === dashboardBuilder.dashboard_id) || null, [data.dashboards, dashboardBuilder.dashboard_id]);
   const selectedDashboardWidgets = useMemo(() => parseJSONSafe(selectedDashboard?.widgets, []), [selectedDashboard]);
+
+  function selectDashboardForEditing(dashboard) {
+    setDashboardBuilder((current) => ({ ...current, dashboard_id: dashboard.id, widget_id: "" }));
+    setDashboardForm({
+      name: dashboard.name,
+      description: dashboard.description,
+      default_time_range: dashboard.default_time_range || "120m",
+    });
+  }
+
+  function beginEditWidget(widget) {
+    setDashboardBuilder((current) => ({
+      ...current,
+      widget_id: widget.id || "",
+      title: widget.title || "",
+      type: widget.type || "chart",
+      dataset: widget.dataset || "log_severity",
+      chart_type: widget.chart_type || "bar",
+      metric: widget.metric || "",
+      layout_w: String(widget.layout?.w || 1),
+      layout_h: String(widget.layout?.h || 1),
+    }));
+  }
+
+  async function handleDeleteWidget(widgetId) {
+    try {
+      if (!selectedDashboard) {
+        throw new Error("select a dashboard first");
+      }
+      await queryApi.deleteDashboardWidget(token, selectedDashboard.id, widgetId);
+      onNotification("Dashboard widget deleted.");
+      await loadDashboard();
+    } catch (error) {
+      onNotification(error.message, "error");
+    }
+  }
+
+  async function moveWidget(widgetId, direction) {
+    try {
+      if (!selectedDashboard) {
+        throw new Error("select a dashboard first");
+      }
+      const widgets = [...selectedDashboardWidgets];
+      const index = widgets.findIndex((row) => row.id === widgetId);
+      if (index < 0) {
+        return;
+      }
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= widgets.length) {
+        return;
+      }
+      [widgets[index], widgets[targetIndex]] = [widgets[targetIndex], widgets[index]];
+      await queryApi.updateDashboard(token, selectedDashboard.id, {
+        name: selectedDashboard.name,
+        description: selectedDashboard.description,
+        default_time_range: selectedDashboard.default_time_range || "120m",
+        layout: parseJSONSafe(selectedDashboard.layout, { columns: 2 }),
+        widgets,
+      });
+      onNotification("Dashboard widget order updated.");
+      await loadDashboard();
+    } catch (error) {
+      onNotification(error.message, "error");
+    }
+  }
 
   if (!token) {
     return (
@@ -924,9 +1058,41 @@ export default function DashboardPage({ state, onNotification }) {
       </Section>
 
       <Section title="Incidents">
+        <form className="form-grid" onSubmit={(event) => { event.preventDefault(); loadDashboard(); }}>
+          <label>
+            Status
+            <select value={incidentFilters.status} onChange={(event) => setIncidentFilters({ ...incidentFilters, status: event.target.value })}>
+              <option value="">all</option>
+              <option value="open">open</option>
+              <option value="acknowledged">acknowledged</option>
+              <option value="resolved">resolved</option>
+            </select>
+          </label>
+          <label>
+            Assigned To
+            <input value={incidentFilters.assigned_to} onChange={(event) => setIncidentFilters({ ...incidentFilters, assigned_to: event.target.value })} />
+          </label>
+          <label>
+            Service
+            <select value={incidentFilters.service_id} onChange={(event) => setIncidentFilters({ ...incidentFilters, service_id: event.target.value })}>
+              <option value="">all</option>
+              {data.services.map((service) => (
+                <option key={service.id} value={service.id}>{service.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Severity
+            <input value={incidentFilters.severity} onChange={(event) => setIncidentFilters({ ...incidentFilters, severity: event.target.value })} />
+          </label>
+          <div className="form-actions">
+            <button type="submit">Apply Incident Filters</button>
+          </div>
+        </form>
         <DataTable
           columns={[
             { key: "title", label: "Title" },
+            { key: "severity", label: "Severity" },
             { key: "status", label: "Status" },
             { key: "assigned_to", label: "Assigned To" },
             { key: "escalation_level", label: "Escalation" },
@@ -941,12 +1107,35 @@ export default function DashboardPage({ state, onNotification }) {
                 <div className="button-row">
                   <button onClick={() => handleIncidentAction("ack", row.id)}>Ack</button>
                   <button onClick={() => handleIncidentAction("resolve", row.id)}>Resolve</button>
-                  <button onClick={() => loadIncidentComments(row.id)}>Comments</button>
+                  <button onClick={() => loadIncidentDetail(row.id)}>Details</button>
                 </div>
               ),
             },
           ]}
           rows={data.incidents}
+        />
+      </Section>
+
+      <Section title="Incident Details">
+        {data.selectedIncident ? (
+          <div className="key-value-grid">
+            <span>Incident</span><code>{data.selectedIncident.id}</code>
+            <span>Status</span><code>{data.selectedIncident.status}</code>
+            <span>Severity</span><code>{data.selectedIncident.severity || "-"}</code>
+            <span>Assigned</span><code>{data.selectedIncident.assigned_to || "-"}</code>
+            <span>Escalation Count</span><code>{data.selectedIncident.escalation_count ?? 0}</code>
+          </div>
+        ) : (
+          <p>Select an incident to inspect timeline, comments, and deliveries.</p>
+        )}
+        <DataTable
+          columns={[
+            { key: "event_type", label: "Event" },
+            { key: "summary", label: "Summary" },
+            { key: "actor_id", label: "Actor" },
+            { key: "created_at", label: "Created", render: (row) => formatDate(row.created_at) },
+          ]}
+          rows={data.incidentTimeline}
         />
       </Section>
 
@@ -1048,7 +1237,7 @@ export default function DashboardPage({ state, onNotification }) {
             { key: "response", label: "Response" },
             { key: "delivered_at", label: "Delivered", render: (row) => formatDate(row.delivered_at) },
           ]}
-          rows={data.deliveries}
+          rows={data.selectedIncident ? data.incidentDeliveries : data.deliveries}
         />
       </Section>
 
@@ -1235,8 +1424,19 @@ export default function DashboardPage({ state, onNotification }) {
             Description
             <input data-testid="dashboard-description" value={dashboardForm.description} onChange={(event) => setDashboardForm({ ...dashboardForm, description: event.target.value })} />
           </label>
+          <label>
+            Default Time Range
+            <select value={dashboardForm.default_time_range} onChange={(event) => setDashboardForm({ ...dashboardForm, default_time_range: event.target.value })}>
+              <option value="30m">30m</option>
+              <option value="120m">120m</option>
+              <option value="24h">24h</option>
+            </select>
+          </label>
           <div className="form-actions">
             <button data-testid="create-dashboard" type="submit">Create Dashboard</button>
+          </div>
+          <div className="form-actions">
+            <button type="button" onClick={handleUpdateDashboardDetails}>Update Selected Dashboard</button>
           </div>
         </form>
         <form className="form-grid" onSubmit={handleSaveDashboardWidget}>
@@ -1252,6 +1452,14 @@ export default function DashboardPage({ state, onNotification }) {
           <label>
             Widget Title
             <input data-testid="dashboard-widget-title" value={dashboardBuilder.title} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, title: event.target.value })} />
+          </label>
+          <label>
+            Width
+            <input value={dashboardBuilder.layout_w} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, layout_w: event.target.value })} />
+          </label>
+          <label>
+            Height
+            <input value={dashboardBuilder.layout_h} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, layout_h: event.target.value })} />
           </label>
           <label>
             Widget Type
@@ -1279,14 +1487,16 @@ export default function DashboardPage({ state, onNotification }) {
             </select>
           </label>
           <div className="form-actions">
-            <button data-testid="save-dashboard-widget" type="submit">Add Widget To Dashboard</button>
+            <button data-testid="save-dashboard-widget" type="submit">{dashboardBuilder.widget_id ? "Update Widget" : "Add Widget To Dashboard"}</button>
           </div>
         </form>
         <DataTable
           columns={[
             { key: "name", label: "Name" },
             { key: "description", label: "Description" },
+            { key: "default_time_range", label: "Time Range" },
             { key: "created_by", label: "Created By" },
+            { key: "edit", label: "Edit", render: (row) => <button onClick={() => selectDashboardForEditing(row)}>Select</button> },
           ]}
           rows={data.dashboards}
         />
@@ -1300,6 +1510,12 @@ export default function DashboardPage({ state, onNotification }) {
               return (
                 <div className="widget-card" key={`${widget.title || widget.dataset}-${index}`}>
                   <h3>{widget.title || widget.dataset || widget.type}</h3>
+                  <div className="button-row">
+                    <button onClick={() => beginEditWidget(widget)}>Edit</button>
+                    <button onClick={() => moveWidget(widget.id, "up")}>Up</button>
+                    <button onClick={() => moveWidget(widget.id, "down")}>Down</button>
+                    <button onClick={() => handleDeleteWidget(widget.id)}>Delete</button>
+                  </div>
                   {widget.type === "stat" ? (
                     <StatCard label={widget.metric || widget.title || "value"} value={data.overview?.[widget.metric] ?? rows.length} />
                   ) : widget.type === "table" ? (

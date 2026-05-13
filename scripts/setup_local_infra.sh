@@ -3,6 +3,22 @@ set -euo pipefail
 
 ocean infra start
 
+if ! docker ps -a --format '{{.Names}}' | grep -q '^pulselens-redis$'; then
+  docker run -d \
+    --name pulselens-redis \
+    -p 6381:6379 \
+    redis:7-alpine >/dev/null
+else
+  docker start pulselens-redis >/dev/null
+fi
+
+for _ in $(seq 1 30); do
+  if redis-cli -h 127.0.0.1 -p 6381 ping >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
 if ! docker ps -a --format '{{.Names}}' | grep -q '^pulselens-clickhouse$'; then
   docker run -d \
     --name pulselens-clickhouse \

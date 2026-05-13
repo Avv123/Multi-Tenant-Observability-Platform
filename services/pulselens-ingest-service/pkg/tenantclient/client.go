@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pulsetenant "github.com/omniful/pulselens-common/tenant"
+	"github.com/omniful/pulselens-platform/netutil"
 )
 
 type Client struct {
@@ -20,7 +21,7 @@ type Client struct {
 
 func New(baseURL, internalToken string) *Client {
 	return &Client{
-		baseURL:       strings.TrimRight(baseURL, "/"),
+		baseURL:       strings.TrimRight(netutil.NormalizeURL(baseURL), "/"),
 		internalToken: internalToken,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,

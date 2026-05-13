@@ -62,6 +62,7 @@ def main():
     base_tenant = "http://127.0.0.1:8081"
     base_ingest = "http://127.0.0.1:8082"
     base_query = "http://127.0.0.1:8084"
+    base_ui = "http://127.0.0.1:3000"
     base_alerting = "http://127.0.0.1:8085"
     base_archive = "http://127.0.0.1:8086"
     webhook_port = free_port()
@@ -334,7 +335,7 @@ def main():
         archive_stats = req(base_archive + "/api/v1/archive/stats", headers=auth_header)
         audit_logs = req(base_tenant + f"/admin/api/v1/tenants/{tenant_id}/audit-logs", headers=auth_header)
         users = req(base_tenant + f"/admin/api/v1/tenants/{tenant_id}/users", headers=auth_header)
-        with urllib.request.urlopen(base_query + "/", timeout=15) as response:
+        with urllib.request.urlopen(base_ui + "/", timeout=15) as response:
             index_html = response.read().decode()
 
         print(

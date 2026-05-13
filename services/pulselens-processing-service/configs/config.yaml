@@ -12,7 +12,7 @@ clickhouse:
   password: "omniful"
 redis:
   hosts:
-    - "localhost:6379"
+    - "localhost:6381"
   db: 0
 kafka:
   brokers:

@@ -19,12 +19,25 @@ type Repository struct {
 	db *gorm.DB
 }
 
+type IncidentFilters struct {
+	Status     string
+	AssignedTo string
+	ServiceID  string
+	Severity   string
+}
+
 type chCountRow struct {
 	Value float64 `json:"value"`
 }
 
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
+}
+
+func (r *Repository) Transaction(ctx context.Context, fn func(*Repository) error) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(&Repository{db: tx})
+	})
 }
 
 func (r *Repository) CreateRule(ctx context.Context, row *alertmodels.AlertRule) error {
@@ -79,11 +92,20 @@ func (r *Repository) ListActiveRules(ctx context.Context) ([]alertmodels.AlertRu
 	return rows, err
 }
 
-func (r *Repository) ListIncidents(ctx context.Context, tenantID string, status string) ([]alertmodels.Incident, error) {
+func (r *Repository) ListIncidents(ctx context.Context, tenantID string, filters IncidentFilters) ([]alertmodels.Incident, error) {
 	rows := make([]alertmodels.Incident, 0)
 	query := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID)
-	if status != "" {
-		query = query.Where("status = ?", status)
+	if filters.Status != "" {
+		query = query.Where("status = ?", filters.Status)
+	}
+	if filters.AssignedTo != "" {
+		query = query.Where("assigned_to = ?", filters.AssignedTo)
+	}
+	if filters.ServiceID != "" {
+		query = query.Where("service_id = ?", filters.ServiceID)
+	}
+	if filters.Severity != "" {
+		query = query.Where("severity = ?", filters.Severity)
 	}
 	err := query.Order("triggered_at desc").Find(&rows).Error
 	return rows, err
@@ -110,6 +132,19 @@ func (r *Repository) GetIncident(ctx context.Context, tenantID, incidentID strin
 	var row alertmodels.Incident
 	err := r.db.WithContext(ctx).Where("tenant_id = ? and id = ?", tenantID, incidentID).First(&row).Error
 	return row, err
+}
+
+func (r *Repository) CreateIncidentEvent(ctx context.Context, row *alertmodels.IncidentEvent) error {
+	return r.db.WithContext(ctx).Create(row).Error
+}
+
+func (r *Repository) ListIncidentEvents(ctx context.Context, tenantID, incidentID string) ([]alertmodels.IncidentEvent, error) {
+	rows := make([]alertmodels.IncidentEvent, 0)
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? and incident_id = ?", tenantID, incidentID).
+		Order("created_at asc").
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *Repository) CreateNotificationChannel(ctx context.Context, row *alertmodels.NotificationChannel) error {
@@ -139,6 +174,15 @@ func (r *Repository) UpdateNotificationDelivery(ctx context.Context, row *alertm
 func (r *Repository) ListNotificationDeliveries(ctx context.Context, tenantID string) ([]alertmodels.NotificationDelivery, error) {
 	rows := make([]alertmodels.NotificationDelivery, 0)
 	err := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Order("created_at desc").Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) ListIncidentDeliveries(ctx context.Context, tenantID, incidentID string) ([]alertmodels.NotificationDelivery, error) {
+	rows := make([]alertmodels.NotificationDelivery, 0)
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? and incident_id = ?", tenantID, incidentID).
+		Order("created_at asc").
+		Find(&rows).Error
 	return rows, err
 }
 

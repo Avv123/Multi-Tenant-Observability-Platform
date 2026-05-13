@@ -23,40 +23,85 @@ func NewController(_ context.Context) (*Controller, error) {
 }
 
 func (c *Controller) Overview(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.Overview(ctx, claimsFromContext(ctx)))
+	row, customError := c.service.Overview(ctx, claimsFromContext(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, row)
 }
 
 func (c *Controller) ListLogs(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.ListLogs(ctx, claimsFromContext(ctx), buildFilters(ctx)))
+	rows, customError := c.service.ListLogs(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) ListMetrics(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.ListMetrics(ctx, claimsFromContext(ctx), buildFilters(ctx)))
+	rows, customError := c.service.ListMetrics(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) ListTraces(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.ListTraces(ctx, claimsFromContext(ctx), buildFilters(ctx)))
+	rows, customError := c.service.ListTraces(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) ServiceHealth(ctx *gin.Context) {
 	filters := buildFilters(ctx)
-	platformresponse.Success(ctx, c.service.ServiceHealth(ctx, claimsFromContext(ctx), filters.Limit))
+	rows, customError := c.service.ServiceHealth(ctx, claimsFromContext(ctx), filters.Limit)
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) LogSeveritySeries(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.LogSeveritySeries(ctx, claimsFromContext(ctx), buildFilters(ctx)))
+	rows, customError := c.service.LogSeveritySeries(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) MetricSeries(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.MetricSeries(ctx, claimsFromContext(ctx), buildFilters(ctx)))
+	rows, customError := c.service.MetricSeries(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) TraceLatencySeries(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.TraceLatencySeries(ctx, claimsFromContext(ctx), buildFilters(ctx)))
+	rows, customError := c.service.TraceLatencySeries(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) TraceDetail(ctx *gin.Context) {
-	platformresponse.Success(ctx, c.service.TraceDetail(ctx, claimsFromContext(ctx), ctx.Param("trace_id")))
+	rows, customError := c.service.TraceDetail(ctx, claimsFromContext(ctx), ctx.Param("trace_id"))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func (c *Controller) CreateSavedQuery(ctx *gin.Context) {
@@ -133,6 +178,36 @@ func (c *Controller) UpdateDashboard(ctx *gin.Context) {
 	platformresponse.Success(ctx, row)
 }
 
+func (c *Controller) UpdateDashboardWidget(ctx *gin.Context) {
+	var request observabilityrequests.UpdateDashboardWidgetRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		platformresponse.Error(ctx, http.StatusBadRequest, errs.New("BAD_REQUEST", err.Error()))
+		return
+	}
+	row, err := c.service.UpdateDashboardWidget(ctx, claimsFromContext(ctx), ctx.Param("dashboard_id"), ctx.Param("widget_id"), request)
+	if err != nil {
+		if customError, ok := err.(errs.CustomError); ok {
+			platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+			return
+		}
+		platformresponse.Error(ctx, http.StatusInternalServerError, errs.New("INTERNAL_SERVER_ERROR", err.Error()))
+		return
+	}
+	platformresponse.Success(ctx, row)
+}
+
+func (c *Controller) DeleteDashboardWidget(ctx *gin.Context) {
+	if err := c.service.DeleteDashboardWidget(ctx, claimsFromContext(ctx), ctx.Param("dashboard_id"), ctx.Param("widget_id")); err != nil {
+		if customError, ok := err.(errs.CustomError); ok {
+			platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+			return
+		}
+		platformresponse.Error(ctx, http.StatusInternalServerError, errs.New("INTERNAL_SERVER_ERROR", err.Error()))
+		return
+	}
+	platformresponse.WithStatus(ctx, http.StatusOK, gin.H{"deleted": true}, nil)
+}
+
 func claimsFromContext(ctx *gin.Context) *commonauth.Claims {
 	value, _ := ctx.Get("claims")
 	if claims, ok := value.(*commonauth.Claims); ok {
@@ -163,5 +238,18 @@ func buildFilters(ctx *gin.Context) observabilityrequests.Filters {
 		Offset:      offset,
 		StartTime:   startTime,
 		EndTime:     endTime,
+	}
+}
+
+func statusCode(code errs.Code) int {
+	switch code {
+	case "BAD_REQUEST":
+		return http.StatusBadRequest
+	case "NOT_FOUND":
+		return http.StatusNotFound
+	case "DEPENDENCY_UNAVAILABLE":
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusInternalServerError
 	}
 }

@@ -47,3 +47,27 @@ func cachedValue[T any](ctx context.Context, key string, loader func() T) T {
 	}
 	return row
 }
+
+func cachedValueWithError[T any](ctx context.Context, key string, loader func() (T, error)) (T, error) {
+	client := queryredis.Get()
+	if client != nil {
+		if payload, err := client.Get(ctx, key).Bytes(); err == nil {
+			var row T
+			if json.Unmarshal(payload, &row) == nil {
+				return row, nil
+			}
+		}
+	}
+
+	row, err := loader()
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	if client != nil {
+		if payload, marshalErr := json.Marshal(row); marshalErr == nil {
+			_ = client.Set(ctx, key, payload, cacheTTL()).Err()
+		}
+	}
+	return row, nil
+}

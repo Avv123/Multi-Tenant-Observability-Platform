@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "preview": "vite preview",
     "test": "vitest",
     "e2e": "playwright test"
   },

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/IBM/sarama"
+	"github.com/omniful/pulselens-platform/netutil"
 )
 
 type Producer struct {
@@ -16,7 +17,7 @@ func NewProducer(brokers []string) (*Producer, error) {
 	config.Version = sarama.V2_8_0_0
 	config.Producer.Return.Successes = true
 
-	client, err := sarama.NewSyncProducer(brokers, config)
+	client, err := sarama.NewSyncProducer(netutil.NormalizeHosts(brokers), config)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +76,7 @@ func ConsumeGroup(ctx context.Context, brokers []string, groupID string, topics 
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 
-	group, err := sarama.NewConsumerGroup(brokers, groupID, config)
+	group, err := sarama.NewConsumerGroup(netutil.NormalizeHosts(brokers), groupID, config)
 	if err != nil {
 		return err
 	}

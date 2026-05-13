@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/omniful/pulselens-platform/netutil"
 )
 
 type Client struct {
@@ -28,7 +30,7 @@ type jsonEnvelope[T any] struct {
 func New(enabled bool, baseURL, database, username, password string) *Client {
 	return &Client{
 		enabled:  enabled && strings.TrimSpace(baseURL) != "",
-		baseURL:  strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		baseURL:  strings.TrimRight(netutil.NormalizeURL(baseURL), "/"),
 		database: strings.TrimSpace(database),
 		username: strings.TrimSpace(username),
 		password: password,

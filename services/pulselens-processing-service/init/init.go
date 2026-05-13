@@ -23,7 +23,7 @@ func Initialize(ctx context.Context) {
 
 	hosts := config.GetStringSlice("redis.hosts")
 	if len(hosts) == 0 {
-		hosts = []string{"localhost:6379"}
+		hosts = []string{"localhost:6381"}
 	}
 	cache.Set(platformredis.New(hosts[0], config.GetInt("redis.db")))
 

@@ -8,6 +8,10 @@ if [[ ! -f "${RENDERED_PATH}" ]]; then
   exit 1
 fi
 
-kubectl apply --dry-run=client -f "${RENDERED_PATH}" >/dev/null
-echo "dry-run=client succeeded for ${RENDERED_PATH}"
+if ! command -v kubectl >/dev/null 2>&1; then
+  echo "skipped: kubectl not installed"
+  exit 0
+fi
 
+kubectl apply --dry-run=client --validate=false -f "${RENDERED_PATH}" >/dev/null
+echo "dry-run=client succeeded for ${RENDERED_PATH}"

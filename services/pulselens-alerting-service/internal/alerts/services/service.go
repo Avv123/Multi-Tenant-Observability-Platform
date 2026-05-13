@@ -155,8 +155,32 @@ func (s *Service) ListRules(ctx context.Context, claims *commonauth.Claims) ([]a
 	return rows, errs.CustomError{}
 }
 
-func (s *Service) ListIncidents(ctx context.Context, claims *commonauth.Claims, status string) ([]alertmodels.Incident, errs.CustomError) {
-	rows, err := s.repository.ListIncidents(ctx, claims.TenantID, status)
+func (s *Service) ListIncidents(ctx context.Context, claims *commonauth.Claims, filters alertrepositories.IncidentFilters) ([]alertmodels.Incident, errs.CustomError) {
+	rows, err := s.repository.ListIncidents(ctx, claims.TenantID, filters)
+	if err != nil {
+		return nil, mapDBError(err)
+	}
+	return rows, errs.CustomError{}
+}
+
+func (s *Service) GetIncident(ctx context.Context, claims *commonauth.Claims, incidentID string) (alertmodels.Incident, errs.CustomError) {
+	row, err := s.repository.GetIncident(ctx, claims.TenantID, incidentID)
+	if err != nil {
+		return alertmodels.Incident{}, mapDBError(err)
+	}
+	return row, errs.CustomError{}
+}
+
+func (s *Service) ListIncidentTimeline(ctx context.Context, claims *commonauth.Claims, incidentID string) ([]alertmodels.IncidentEvent, errs.CustomError) {
+	rows, err := s.repository.ListIncidentEvents(ctx, claims.TenantID, incidentID)
+	if err != nil {
+		return nil, mapDBError(err)
+	}
+	return rows, errs.CustomError{}
+}
+
+func (s *Service) ListIncidentDeliveries(ctx context.Context, claims *commonauth.Claims, incidentID string) ([]alertmodels.NotificationDelivery, errs.CustomError) {
+	rows, err := s.repository.ListIncidentDeliveries(ctx, claims.TenantID, incidentID)
 	if err != nil {
 		return nil, mapDBError(err)
 	}
@@ -173,7 +197,15 @@ func (s *Service) AcknowledgeIncident(ctx context.Context, claims *commonauth.Cl
 	row.AcknowledgedBy = claims.UserID
 	row.AcknowledgedAt = &now
 	row.NextEscalationAt = nil
-	if err = s.repository.SaveIncident(ctx, &row); err != nil {
+	if err = s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+		if saveErr := repo.SaveIncident(ctx, &row); saveErr != nil {
+			return saveErr
+		}
+		return repo.CreateIncidentEvent(ctx, buildIncidentEvent(row, "incident.acknowledged", claims.UserID, "Incident acknowledged", map[string]any{
+			"status":          row.Status,
+			"acknowledged_by": claims.UserID,
+		}))
+	}); err != nil {
 		return alertmodels.Incident{}, mapDBError(err)
 	}
 	_ = s.notifyIncident(ctx, row, "incident.acknowledged")
@@ -189,7 +221,14 @@ func (s *Service) ResolveIncident(ctx context.Context, claims *commonauth.Claims
 	row.Status = "resolved"
 	row.ResolvedAt = &now
 	row.NextEscalationAt = nil
-	if err = s.repository.SaveIncident(ctx, &row); err != nil {
+	if err = s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+		if saveErr := repo.SaveIncident(ctx, &row); saveErr != nil {
+			return saveErr
+		}
+		return repo.CreateIncidentEvent(ctx, buildIncidentEvent(row, "incident.resolved", claims.UserID, "Incident resolved", map[string]any{
+			"status": row.Status,
+		}))
+	}); err != nil {
 		return alertmodels.Incident{}, mapDBError(err)
 	}
 	_ = s.notifyIncident(ctx, row, "incident.resolved")
@@ -207,7 +246,14 @@ func (s *Service) AssignIncident(ctx context.Context, claims *commonauth.Claims,
 	now := time.Now().UTC()
 	row.AssignedTo = request.AssignedTo
 	row.AssignedAt = &now
-	if err = s.repository.SaveIncident(ctx, &row); err != nil {
+	if err = s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+		if saveErr := repo.SaveIncident(ctx, &row); saveErr != nil {
+			return saveErr
+		}
+		return repo.CreateIncidentEvent(ctx, buildIncidentEvent(row, "incident.assigned", claims.UserID, "Incident assigned", map[string]any{
+			"assigned_to": row.AssignedTo,
+		}))
+	}); err != nil {
 		return alertmodels.Incident{}, mapDBError(err)
 	}
 	_ = s.notifyIncident(ctx, row, "incident.assigned")
@@ -285,7 +331,19 @@ func (s *Service) AddIncidentComment(ctx context.Context, claims *commonauth.Cla
 		AuthorID:   claims.UserID,
 		Body:       request.Body,
 	}
-	if err := s.repository.CreateIncidentComment(ctx, &row); err != nil {
+	if err := s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+		if createErr := repo.CreateIncidentComment(ctx, &row); createErr != nil {
+			return createErr
+		}
+		incident, incidentErr := repo.GetIncident(ctx, claims.TenantID, incidentID)
+		if incidentErr != nil {
+			return incidentErr
+		}
+		return repo.CreateIncidentEvent(ctx, buildIncidentEvent(incident, "incident.comment_added", claims.UserID, "Incident comment added", map[string]any{
+			"comment_id": row.ID,
+			"body":       row.Body,
+		}))
+	}); err != nil {
 		return alertmodels.IncidentComment{}, mapDBError(err)
 	}
 	return row, errs.CustomError{}
@@ -320,7 +378,15 @@ func (s *Service) EvaluateRule(ctx context.Context, rule alertmodels.AlertRule) 
 				openIncident.ObservedValue = observedValue
 				openIncident.Threshold = rule.Threshold
 				openIncident.Summary = buildIncidentSummary(rule, observedValue)
-				if err = s.repository.SaveIncident(ctx, &openIncident); err != nil {
+				if err = s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+					if saveErr := repo.SaveIncident(ctx, &openIncident); saveErr != nil {
+						return saveErr
+					}
+					return repo.CreateIncidentEvent(ctx, buildIncidentEvent(openIncident, "incident.retriggered", "", "Incident observed value updated", map[string]any{
+						"observed_value": openIncident.ObservedValue,
+						"threshold":      openIncident.Threshold,
+					}))
+				}); err != nil {
 					return alertresponses.EvaluationResult{}, err
 				}
 				incidentStatus = openIncident.Status
@@ -330,8 +396,10 @@ func (s *Service) EvaluateRule(ctx context.Context, rule alertmodels.AlertRule) 
 					AlertRuleID:     rule.ID,
 					TenantID:        rule.TenantID,
 					ServiceID:       rule.ServiceID,
+					Severity:        strings.ToLower(rule.Severity),
 					Status:          "open",
 					EscalationLevel: 0,
+					EscalationCount: 0,
 					Title:           rule.Name,
 					Summary:         buildIncidentSummary(rule, observedValue),
 					ObservedValue:   observedValue,
@@ -341,7 +409,16 @@ func (s *Service) EvaluateRule(ctx context.Context, rule alertmodels.AlertRule) 
 				policy := s.policyForRule(ctx, rule)
 				nextEscalationAt := now.Add(time.Duration(maxInt(policy.EscalationIntervalMinutes, 1)) * time.Minute)
 				incident.NextEscalationAt = &nextEscalationAt
-				if err = s.repository.CreateIncident(ctx, &incident); err != nil {
+				if err = s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+					if createErr := repo.CreateIncident(ctx, &incident); createErr != nil {
+						return createErr
+					}
+					return repo.CreateIncidentEvent(ctx, buildIncidentEvent(incident, "incident.opened", "", "Incident opened", map[string]any{
+						"observed_value": incident.ObservedValue,
+						"threshold":      incident.Threshold,
+						"severity":       incident.Severity,
+					}))
+				}); err != nil {
 					return alertresponses.EvaluationResult{}, err
 				}
 				_ = s.notifyIncident(ctx, incident, "incident.opened")
@@ -364,7 +441,14 @@ func (s *Service) EvaluateRule(ctx context.Context, rule alertmodels.AlertRule) 
 			openIncident.ResolvedAt = &now
 			openIncident.NextEscalationAt = nil
 			openIncident.Summary = buildResolutionSummary(rule, observedValue)
-			if err = s.repository.SaveIncident(ctx, &openIncident); err != nil {
+			if err = s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+				if saveErr := repo.SaveIncident(ctx, &openIncident); saveErr != nil {
+					return saveErr
+				}
+				return repo.CreateIncidentEvent(ctx, buildIncidentEvent(openIncident, "incident.resolved", "", "Incident auto-resolved", map[string]any{
+					"observed_value": observedValue,
+				}))
+			}); err != nil {
 				return alertresponses.EvaluationResult{}, err
 			}
 			_ = s.notifyIncident(ctx, openIncident, "incident.resolved")
@@ -419,11 +503,20 @@ func (s *Service) EvaluateEscalations(ctx context.Context) error {
 			continue
 		}
 		incident.EscalationLevel++
+		incident.EscalationCount++
 		incident.LastEscalatedAt = &now
 		nextEscalationAt := now.Add(time.Duration(maxInt(policy.EscalationIntervalMinutes, 1)) * time.Minute)
 		incident.NextEscalationAt = &nextEscalationAt
 		incident.Summary = fmt.Sprintf("%s | escalated to level %d", incident.Summary, incident.EscalationLevel)
-		if saveErr := s.repository.SaveIncident(ctx, &incident); saveErr != nil {
+		if saveErr := s.repository.Transaction(ctx, func(repo *alertrepositories.Repository) error {
+			if err := repo.SaveIncident(ctx, &incident); err != nil {
+				return err
+			}
+			return repo.CreateIncidentEvent(ctx, buildIncidentEvent(incident, "incident.escalated", "", "Incident escalated", map[string]any{
+				"escalation_level": incident.EscalationLevel,
+				"escalation_count": incident.EscalationCount,
+			}))
+		}); saveErr != nil {
 			logging.Errorf("failed to save escalation incident=%s err=%v", incident.ID, saveErr)
 			continue
 		}
@@ -556,6 +649,11 @@ func (s *Service) notifyIncident(ctx context.Context, incident alertmodels.Incid
 		if err = s.repository.CreateNotificationDelivery(ctx, &delivery); err != nil {
 			return err
 		}
+		_ = s.repository.CreateIncidentEvent(ctx, buildIncidentEvent(incident, "notification.delivery_attempted", "", "Notification delivery attempted", map[string]any{
+			"delivery_id": delivery.ID,
+			"channel_id":  channel.ID,
+			"event_type":  eventType,
+		}))
 		status, response, deliveredAt := deliverNotificationWithPolicy(ctx, channel, payloadBytes, policy.MaxDeliveryAttempts, policy.DeliveryBackoffMillis)
 		delivery.Status = status
 		delivery.AttemptCount = maxInt(policy.MaxDeliveryAttempts, 1)
@@ -564,6 +662,21 @@ func (s *Service) notifyIncident(ctx context.Context, incident alertmodels.Incid
 		if err = s.repository.UpdateNotificationDelivery(ctx, &delivery); err != nil {
 			return err
 		}
+		eventName := "notification.delivered"
+		eventSummary := "Notification delivered"
+		if status != "delivered" {
+			eventName = "notification.delivery_failed"
+			eventSummary = "Notification delivery failed"
+		}
+		_ = s.repository.CreateIncidentEvent(ctx, buildIncidentEvent(incident, eventName, "", eventSummary, map[string]any{
+			"delivery_id":   delivery.ID,
+			"channel_id":    channel.ID,
+			"status":        delivery.Status,
+			"attempt_count": delivery.AttemptCount,
+			"response":      delivery.Response,
+			"notification":  eventType,
+			"delivered_at":  delivery.DeliveredAt,
+		}))
 	}
 	return nil
 }
@@ -698,4 +811,16 @@ func stringValue(value interface{}) string {
 		return typed
 	}
 	return ""
+}
+
+func buildIncidentEvent(incident alertmodels.Incident, eventType string, actorID string, summary string, metadata map[string]any) *alertmodels.IncidentEvent {
+	return &alertmodels.IncidentEvent{
+		ID:         idgen.New("incident_event"),
+		IncidentID: incident.ID,
+		TenantID:   incident.TenantID,
+		EventType:  eventType,
+		ActorID:    actorID,
+		Summary:    summary,
+		Metadata:   marshalJSON(metadata),
+	}
 }

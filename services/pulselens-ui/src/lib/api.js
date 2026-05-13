@@ -187,9 +187,22 @@ export const queryApi = {
   },
   updateDashboard(token, dashboardId, body) {
     return request("query", `/api/v1/dashboards/${dashboardId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+  },
+  updateDashboardWidget(token, dashboardId, widgetId, body) {
+    return request("query", `/api/v1/dashboards/${dashboardId}/widgets/${widgetId}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
+    });
+  },
+  deleteDashboardWidget(token, dashboardId, widgetId) {
+    return request("query", `/api/v1/dashboards/${dashboardId}/widgets/${widgetId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
   platformOverview(token) {
@@ -289,9 +302,23 @@ export const alertingApi = {
       body: JSON.stringify(body),
     });
   },
-  listIncidents(token, status = "") {
-    const suffix = status ? `?status=${status}` : "";
-    return request("alerting", `/api/v1/incidents${suffix}`, {
+  listIncidents(token, filters = {}) {
+    return request("alerting", `/api/v1/incidents${buildQueryString(filters)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  getIncident(token, incidentId) {
+    return request("alerting", `/api/v1/incidents/${incidentId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  incidentTimeline(token, incidentId) {
+    return request("alerting", `/api/v1/incidents/${incidentId}/timeline`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  incidentDeliveries(token, incidentId) {
+    return request("alerting", `/api/v1/incidents/${incidentId}/deliveries`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   },

@@ -3,13 +3,13 @@ package repositories
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
 	commonauth "github.com/omniful/pulselens-common/auth"
 	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
 	"github.com/omniful/pulselens-platform/idgen"
-	"github.com/omniful/pulselens-platform/logging"
 	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
 	observabilityrequests "github.com/omniful/pulselens-query-service/internal/observability/requests"
 	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
@@ -25,60 +25,32 @@ func NewRepository(db *gorm.DB, ch *platformclickhouse.Client) *Repository {
 	return &Repository{db: db, ch: ch}
 }
 
-func (r *Repository) CountLogs(ctx context.Context, tenantID string) int64 {
-	if r.useClickHouse() {
-		if count, err := r.countLogsCH(ctx, tenantID); err == nil {
-			return count
-		} else {
-			logging.Errorf("count logs from clickhouse failed: %v", err)
-		}
+func (r *Repository) CountLogs(ctx context.Context, tenantID string) (int64, error) {
+	if !r.useClickHouse() {
+		return 0, r.telemetryUnavailable()
 	}
-	if count, ok := r.countTelemetryRollup(ctx, tenantID, "log"); ok {
-		return count
-	}
-	return r.countLogsPG(ctx, tenantID)
+	return r.countLogsCH(ctx, tenantID)
 }
 
-func (r *Repository) CountMetrics(ctx context.Context, tenantID string) int64 {
-	if r.useClickHouse() {
-		if count, err := r.countMetricsCH(ctx, tenantID); err == nil {
-			return count
-		} else {
-			logging.Errorf("count metrics from clickhouse failed: %v", err)
-		}
+func (r *Repository) CountMetrics(ctx context.Context, tenantID string) (int64, error) {
+	if !r.useClickHouse() {
+		return 0, r.telemetryUnavailable()
 	}
-	if count, ok := r.countTelemetryRollup(ctx, tenantID, "metric"); ok {
-		return count
-	}
-	return r.countMetricsPG(ctx, tenantID)
+	return r.countMetricsCH(ctx, tenantID)
 }
 
-func (r *Repository) CountTraceSpans(ctx context.Context, tenantID string) int64 {
-	if r.useClickHouse() {
-		if count, err := r.countTraceSpansCH(ctx, tenantID); err == nil {
-			return count
-		} else {
-			logging.Errorf("count trace spans from clickhouse failed: %v", err)
-		}
+func (r *Repository) CountTraceSpans(ctx context.Context, tenantID string) (int64, error) {
+	if !r.useClickHouse() {
+		return 0, r.telemetryUnavailable()
 	}
-	if count, ok := r.countTelemetryRollup(ctx, tenantID, "trace"); ok {
-		return count
-	}
-	return r.countTraceSpansPG(ctx, tenantID)
+	return r.countTraceSpansCH(ctx, tenantID)
 }
 
-func (r *Repository) CountServices(ctx context.Context, tenantID string) int64 {
-	if r.useClickHouse() {
-		if count, err := r.countServicesCH(ctx, tenantID); err == nil {
-			return count
-		} else {
-			logging.Errorf("count services from clickhouse failed: %v", err)
-		}
+func (r *Repository) CountServices(ctx context.Context, tenantID string) (int64, error) {
+	if !r.useClickHouse() {
+		return 0, r.telemetryUnavailable()
 	}
-	if count, ok := r.countServiceRollup(ctx, tenantID); ok {
-		return count
-	}
-	return r.countServicesPG(ctx, tenantID)
+	return r.countServicesCH(ctx, tenantID)
 }
 
 func (r *Repository) ListUsage(ctx context.Context, tenantID string, limit int) []observabilityresponses.UsageRow {
@@ -92,62 +64,39 @@ func (r *Repository) ListUsage(ctx context.Context, tenantID string, limit int) 
 	return rows
 }
 
-func (r *Repository) ListLogs(ctx context.Context, tenantID string, filters observabilityrequests.Filters) []observabilityresponses.LogRow {
-	if r.useClickHouse() {
-		if rows, err := r.listLogsCH(ctx, tenantID, filters); err == nil {
-			return rows
-		} else {
-			logging.Errorf("list logs from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListLogs(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.LogRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	return r.listLogsPG(ctx, tenantID, filters)
+	return r.listLogsCH(ctx, tenantID, filters)
 }
 
-func (r *Repository) ListMetrics(ctx context.Context, tenantID string, filters observabilityrequests.Filters) []observabilityresponses.MetricRow {
-	if r.useClickHouse() {
-		if rows, err := r.listMetricsCH(ctx, tenantID, filters); err == nil {
-			return rows
-		} else {
-			logging.Errorf("list metrics from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListMetrics(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.MetricRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	return r.listMetricsPG(ctx, tenantID, filters)
+	return r.listMetricsCH(ctx, tenantID, filters)
 }
 
-func (r *Repository) ListTraces(ctx context.Context, tenantID string, filters observabilityrequests.Filters) []observabilityresponses.TraceRow {
-	if r.useClickHouse() {
-		if rows, err := r.listTracesCH(ctx, tenantID, filters); err == nil {
-			return rows
-		} else {
-			logging.Errorf("list traces from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListTraces(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.TraceRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	return r.listTracesPG(ctx, tenantID, filters)
+	return r.listTracesCH(ctx, tenantID, filters)
 }
 
-func (r *Repository) TraceDetail(ctx context.Context, tenantID string, traceID string) []observabilityresponses.TraceSpanRow {
-	if r.useClickHouse() {
-		if rows, err := r.traceDetailCH(ctx, tenantID, traceID); err == nil {
-			return rows
-		} else {
-			logging.Errorf("trace detail from clickhouse failed: %v", err)
-		}
+func (r *Repository) TraceDetail(ctx context.Context, tenantID string, traceID string) ([]observabilityresponses.TraceSpanRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	return r.traceDetailPG(ctx, tenantID, traceID)
+	return r.traceDetailCH(ctx, tenantID, traceID)
 }
 
-func (r *Repository) ListServiceHealth(ctx context.Context, tenantID string, limit int) []observabilityresponses.ServiceHealthRow {
-	if r.useClickHouse() {
-		if rows, err := r.listServiceHealthCH(ctx, tenantID, limit); err == nil {
-			return rows
-		} else {
-			logging.Errorf("service health from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListServiceHealth(ctx context.Context, tenantID string, limit int) ([]observabilityresponses.ServiceHealthRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	if rows, ok := r.listServiceHealthRollups(ctx, tenantID, limit); ok {
-		return rows
-	}
-	return r.listServiceHealthPG(ctx, tenantID, limit)
+	return r.listServiceHealthCH(ctx, tenantID, limit)
 }
 
 func (r *Repository) CreateSavedQuery(ctx context.Context, claims *commonauth.Claims, request observabilityrequests.CreateSavedQueryRequest) (observabilitymodels.SavedQuery, error) {
@@ -189,7 +138,7 @@ func (r *Repository) UpdateSavedQuery(ctx context.Context, claims *commonauth.Cl
 	return row, err
 }
 
-func (r *Repository) CreateDashboard(ctx context.Context, claims *commonauth.Claims, request observabilityrequests.CreateDashboardRequest) (observabilitymodels.Dashboard, error) {
+func (r *Repository) CreateDashboard(ctx context.Context, claims *commonauth.Claims, request observabilityrequests.UpdateDashboardRequest) (observabilitymodels.Dashboard, error) {
 	layout, err := json.Marshal(request.Layout)
 	if err != nil {
 		return observabilitymodels.Dashboard{}, err
@@ -199,13 +148,17 @@ func (r *Repository) CreateDashboard(ctx context.Context, claims *commonauth.Cla
 		return observabilitymodels.Dashboard{}, err
 	}
 	row := observabilitymodels.Dashboard{
-		ID:          idgen.New("dash"),
-		TenantID:    claims.TenantID,
-		Name:        request.Name,
-		Description: request.Description,
-		Layout:      string(layout),
-		Widgets:     string(widgets),
-		CreatedBy:   claims.UserID,
+		ID:               idgen.New("dash"),
+		TenantID:         claims.TenantID,
+		Name:             request.Name,
+		Description:      request.Description,
+		DefaultTimeRange: strings.TrimSpace(request.DefaultTimeRange),
+		Layout:           string(layout),
+		Widgets:          string(widgets),
+		CreatedBy:        claims.UserID,
+	}
+	if row.DefaultTimeRange == "" {
+		row.DefaultTimeRange = "120m"
 	}
 	err = r.db.WithContext(ctx).Create(&row).Error
 	return row, err
@@ -217,9 +170,15 @@ func (r *Repository) ListDashboards(ctx context.Context, tenantID string) ([]obs
 	return rows, err
 }
 
-func (r *Repository) UpdateDashboard(ctx context.Context, claims *commonauth.Claims, dashboardID string, request observabilityrequests.UpdateDashboardRequest) (observabilitymodels.Dashboard, error) {
+func (r *Repository) GetDashboard(ctx context.Context, tenantID, dashboardID string) (observabilitymodels.Dashboard, error) {
 	row := observabilitymodels.Dashboard{}
-	if err := r.db.WithContext(ctx).Where("tenant_id = ? and id = ?", claims.TenantID, dashboardID).First(&row).Error; err != nil {
+	err := r.db.WithContext(ctx).Where("tenant_id = ? and id = ?", tenantID, dashboardID).First(&row).Error
+	return row, err
+}
+
+func (r *Repository) UpdateDashboard(ctx context.Context, claims *commonauth.Claims, dashboardID string, request observabilityrequests.UpdateDashboardRequest) (observabilitymodels.Dashboard, error) {
+	row, err := r.GetDashboard(ctx, claims.TenantID, dashboardID)
+	if err != nil {
 		return observabilitymodels.Dashboard{}, err
 	}
 	layout, err := json.Marshal(request.Layout)
@@ -232,10 +191,22 @@ func (r *Repository) UpdateDashboard(ctx context.Context, claims *commonauth.Cla
 	}
 	row.Name = request.Name
 	row.Description = request.Description
+	row.DefaultTimeRange = strings.TrimSpace(request.DefaultTimeRange)
+	if row.DefaultTimeRange == "" {
+		row.DefaultTimeRange = "120m"
+	}
 	row.Layout = string(layout)
 	row.Widgets = string(widgets)
 	err = r.db.WithContext(ctx).Save(&row).Error
 	return row, err
+}
+
+func (r *Repository) ReplaceDashboard(ctx context.Context, row *observabilitymodels.Dashboard) error {
+	return r.db.WithContext(ctx).Save(row).Error
+}
+
+func (r *Repository) telemetryUnavailable() error {
+	return errors.New("clickhouse telemetry store unavailable")
 }
 
 func (r *Repository) useClickHouse() bool {
@@ -459,83 +430,25 @@ func deriveHealth(row observabilityresponses.ServiceHealthRow) string {
 	}
 }
 
-func (r *Repository) ListLogSeverityRollups(ctx context.Context, tenantID string, filters observabilityrequests.Filters) []observabilityresponses.LogSeverityRollupRow {
-	if r.useClickHouse() {
-		if rows, err := r.listLogSeverityRollupsCH(ctx, tenantID, filters); err == nil {
-			return rows
-		} else {
-			logging.Errorf("log severity rollups from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListLogSeverityRollups(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.LogSeverityRollupRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	rows := make([]observabilityresponses.LogSeverityRollupRow, 0)
-	query := r.db.WithContext(ctx).Table("log_severity_rollup_minutes").Where("tenant_id = ?", tenantID)
-	if filters.ServiceID != "" {
-		query = query.Where("service_id = ?", filters.ServiceID)
-	}
-	if filters.Environment != "" {
-		query = query.Where("environment = ?", filters.Environment)
-	}
-	if filters.Severity != "" {
-		query = query.Where("severity = ?", filters.Severity)
-	}
-	query = bucketBounds(query, filters)
-	query.Order("bucket_start desc, service_name asc, severity asc").Limit(filters.Limit).Offset(filters.Offset).Scan(&rows)
-	return rows
+	return r.listLogSeverityRollupsCH(ctx, tenantID, filters)
 }
 
-func (r *Repository) ListMetricSeries(ctx context.Context, tenantID string, filters observabilityrequests.Filters) []observabilityresponses.MetricSeriesRow {
-	if r.useClickHouse() {
-		if rows, err := r.listMetricSeriesCH(ctx, tenantID, filters); err == nil {
-			return rows
-		} else {
-			logging.Errorf("metric series from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListMetricSeries(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.MetricSeriesRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	rows := make([]observabilityresponses.MetricSeriesRow, 0)
-	query := r.db.WithContext(ctx).Table("metric_rollup_minutes").Where("tenant_id = ?", tenantID)
-	if filters.ServiceID != "" {
-		query = query.Where("service_id = ?", filters.ServiceID)
-	}
-	if filters.Environment != "" {
-		query = query.Where("environment = ?", filters.Environment)
-	}
-	if filters.MetricName != "" {
-		query = query.Where("metric_name = ?", filters.MetricName)
-	}
-	query = bucketBounds(query, filters)
-	query.Order("bucket_start desc, metric_name asc").Limit(filters.Limit).Offset(filters.Offset).Scan(&rows)
-	for index := range rows {
-		if rows[index].SampleCount > 0 {
-			rows[index].AverageValue = rows[index].SumValue / float64(rows[index].SampleCount)
-		}
-	}
-	return rows
+	return r.listMetricSeriesCH(ctx, tenantID, filters)
 }
 
-func (r *Repository) ListTraceLatencyRollups(ctx context.Context, tenantID string, filters observabilityrequests.Filters) []observabilityresponses.TraceLatencyRollupRow {
-	if r.useClickHouse() {
-		if rows, err := r.listTraceLatencyRollupsCH(ctx, tenantID, filters); err == nil {
-			return rows
-		} else {
-			logging.Errorf("trace latency rollups from clickhouse failed: %v", err)
-		}
+func (r *Repository) ListTraceLatencyRollups(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.TraceLatencyRollupRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
 	}
-	rows := make([]observabilityresponses.TraceLatencyRollupRow, 0)
-	query := r.db.WithContext(ctx).Table("trace_latency_rollup_minutes").Where("tenant_id = ?", tenantID)
-	if filters.ServiceID != "" {
-		query = query.Where("service_id = ?", filters.ServiceID)
-	}
-	if filters.Environment != "" {
-		query = query.Where("environment = ?", filters.Environment)
-	}
-	query = bucketBounds(query, filters)
-	query.Order("bucket_start desc, service_name asc, operation asc").Limit(filters.Limit).Offset(filters.Offset).Scan(&rows)
-	for index := range rows {
-		if rows[index].SpanCount > 0 {
-			rows[index].AverageDurationM = float64(rows[index].TotalDurationMS) / float64(rows[index].SpanCount)
-		}
-	}
-	return rows
+	return r.listTraceLatencyRollupsCH(ctx, tenantID, filters)
 }
 
 func bucketBounds(query *gorm.DB, filters observabilityrequests.Filters) *gorm.DB {

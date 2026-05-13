@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/omniful/pulselens-platform/netutil"
 )
 
 type Client struct {
@@ -43,6 +44,7 @@ func New(enabled bool, endpoint, region, accessKey, secretKey, bucket, prefix st
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
 	}
 	if strings.TrimSpace(endpoint) != "" {
+		endpoint = netutil.NormalizeURL(endpoint)
 		resolver := aws.EndpointResolverWithOptionsFunc(func(service string, region string, _ ...interface{}) (aws.Endpoint, error) {
 			if service == s3.ServiceID {
 				return aws.Endpoint{URL: endpoint, HostnameImmutable: true}, nil

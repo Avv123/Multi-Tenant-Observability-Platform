@@ -1,0 +1,10 @@
+bin/
+services/pulselens-ui/dist/
+services/pulselens-ui/node_modules/
+services/pulselens-ui/test-results/
+.cache/
+.swift-cache/
+.tmp/
+scripts/__pycache__/
+archive/
+data/

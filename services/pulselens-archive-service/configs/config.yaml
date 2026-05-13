@@ -6,7 +6,7 @@ postgres:
   dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
 redis:
   hosts:
-    - "localhost:6379"
+    - "localhost:6381"
   db: 0
 kafka:
   brokers:

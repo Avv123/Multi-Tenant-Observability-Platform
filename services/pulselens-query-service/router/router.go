@@ -44,7 +44,10 @@ func Initialize(ctx context.Context, server *httpserver.Server) error {
 	api.PATCH("/saved-queries/:query_id", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleServiceOwner), controller.UpdateSavedQuery)
 	api.GET("/dashboards", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleViewer, authz.RoleOperator, authz.RoleAlertManager, authz.RoleServiceOwner), controller.ListDashboards)
 	api.POST("/dashboards", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleServiceOwner), controller.CreateDashboard)
+	api.PUT("/dashboards/:dashboard_id", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleServiceOwner), controller.UpdateDashboard)
 	api.PATCH("/dashboards/:dashboard_id", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleServiceOwner), controller.UpdateDashboard)
+	api.PATCH("/dashboards/:dashboard_id/widgets/:widget_id", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleServiceOwner), controller.UpdateDashboardWidget)
+	api.DELETE("/dashboards/:dashboard_id/widgets/:widget_id", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleServiceOwner), controller.DeleteDashboardWidget)
 	api.GET("/platform/runtime", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleAlertManager), controller.PlatformRuntime)
 	api.GET("/platform/backpressure", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleAlertManager), controller.PlatformBackpressure)
 	api.GET("/platform/dependencies", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleAlertManager), controller.PlatformDependencies)
@@ -52,7 +55,10 @@ func Initialize(ctx context.Context, server *httpserver.Server) error {
 	api.GET("/platform/overview", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleAlertManager), controller.PlatformOverview)
 	api.GET("/platform/cleanup-runs", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleOperator, authz.RoleAlertManager), controller.CleanupRuns)
 
-	uiDir := filepath.Clean(config.GetString("ui.dir"))
+	uiDir, err := filepath.Abs(filepath.Clean(config.GetString("ui.dir")))
+	if err != nil {
+		return err
+	}
 	server.Engine.Static("/assets", filepath.Join(uiDir, "assets"))
 	server.Engine.GET("/", func(c *gin.Context) {
 		c.File(filepath.Join(uiDir, "index.html"))

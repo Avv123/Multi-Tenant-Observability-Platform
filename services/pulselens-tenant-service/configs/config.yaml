@@ -12,7 +12,7 @@ postgres:
 redis:
   clusterMode: false
   hosts:
-    - "localhost:6379"
+    - "localhost:6381"
   db: 0
 jwt:
   secret: "pulselens-local-secret"

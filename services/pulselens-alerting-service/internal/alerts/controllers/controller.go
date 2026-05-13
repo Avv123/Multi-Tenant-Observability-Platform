@@ -94,7 +94,34 @@ func (c *Controller) ListPolicies(ctx *gin.Context) {
 }
 
 func (c *Controller) ListIncidents(ctx *gin.Context) {
-	rows, customError := c.service.ListIncidents(ctx, claimsFromContext(ctx), ctx.Query("status"))
+	rows, customError := c.service.ListIncidents(ctx, claimsFromContext(ctx), alertservices.IncidentFiltersFromQuery(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
+}
+
+func (c *Controller) GetIncident(ctx *gin.Context) {
+	row, customError := c.service.GetIncident(ctx, claimsFromContext(ctx), ctx.Param("incident_id"))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, row)
+}
+
+func (c *Controller) ListIncidentTimeline(ctx *gin.Context) {
+	rows, customError := c.service.ListIncidentTimeline(ctx, claimsFromContext(ctx), ctx.Param("incident_id"))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
+}
+
+func (c *Controller) ListIncidentDeliveries(ctx *gin.Context) {
+	rows, customError := c.service.ListIncidentDeliveries(ctx, claimsFromContext(ctx), ctx.Param("incident_id"))
 	if customError.Exists() {
 		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
 		return

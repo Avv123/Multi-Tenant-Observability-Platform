@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,31 +20,44 @@ var (
 	once    sync.Once
 )
 
+func LoadFromBytes(bytes []byte) error {
+	values := map[string]any{}
+	if err := yaml.Unmarshal(bytes, &values); err != nil {
+		return err
+	}
+	manager = &Manager{values: values}
+	return nil
+}
+
 func LoadFromPath(path string) error {
 	var loadErr error
 	once.Do(func() {
 		bytes, err := os.ReadFile(path)
 		if err != nil {
-			loadErr = err
-			return
+			bytes, err = exec.Command("cat", path).Output()
+			if err != nil {
+				loadErr = err
+				return
+			}
 		}
-
-		values := map[string]any{}
-		if err = yaml.Unmarshal(bytes, &values); err != nil {
-			loadErr = err
-			return
-		}
-
-		manager = &Manager{values: values}
+		loadErr = LoadFromBytes(bytes)
 	})
 
 	return loadErr
 }
 
 func MustLoadFromEnv() error {
+	if inline := os.Getenv("CONFIG_INLINE"); inline != "" {
+		var loadErr error
+		once.Do(func() {
+			loadErr = LoadFromBytes([]byte(inline))
+		})
+		return loadErr
+	}
+
 	path := os.Getenv("CONFIG_PATH")
 	if path == "" {
-		return errors.New("CONFIG_PATH is required")
+		return errors.New("CONFIG_PATH or CONFIG_INLINE is required")
 	}
 
 	return LoadFromPath(path)

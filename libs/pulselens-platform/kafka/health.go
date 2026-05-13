@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/IBM/sarama"
+	"github.com/omniful/pulselens-platform/netutil"
 )
 
 type ConsumerGroupLagRow struct {
@@ -20,7 +21,7 @@ type ConsumerGroupLagRow struct {
 func Ping(_ context.Context, brokers []string) error {
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_8_0_0
-	client, err := sarama.NewClient(brokers, config)
+	client, err := sarama.NewClient(netutil.NormalizeHosts(brokers), config)
 	if err != nil {
 		return err
 	}
@@ -32,7 +33,7 @@ func ConsumerGroupLag(brokers []string, groupID string, topics []string) ([]Cons
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_8_0_0
 
-	client, err := sarama.NewClient(brokers, config)
+	client, err := sarama.NewClient(netutil.NormalizeHosts(brokers), config)
 	if err != nil {
 		return nil, err
 	}

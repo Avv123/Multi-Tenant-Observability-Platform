@@ -14,6 +14,7 @@ import (
 
 	alertmodels "github.com/omniful/pulselens-alerting-service/internal/alerts/models"
 	"github.com/omniful/pulselens-platform/config"
+	"github.com/omniful/pulselens-platform/netutil"
 )
 
 type webhookChannelConfig struct {
@@ -68,6 +69,7 @@ func deliverWebhook(ctx context.Context, channel alertmodels.NotificationChannel
 	if strings.TrimSpace(cfg.URL) == "" {
 		return time.Time{}, "webhook url is required", fmt.Errorf("webhook url is required")
 	}
+	cfg.URL = netutil.NormalizeURL(cfg.URL)
 
 	method := strings.ToUpper(strings.TrimSpace(cfg.Method))
 	if method == "" {
