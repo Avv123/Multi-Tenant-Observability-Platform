@@ -1,9 +1,9 @@
 service:
   name: pulselens-alerting-service
 server:
-  port: ":8085"
+  port: "127.0.0.1:8085"
 postgres:
-  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5433 sslmode=disable"
 clickhouse:
   enabled: true
   baseUrl: "http://localhost:8123"
@@ -24,6 +24,6 @@ runtime:
   heartbeatTTLSeconds: 15
 smtp:
   host: "127.0.0.1"
-  port: 1025
+  port: 1026
   from: "pulselens@local"
   subjectPrefix: "[PulseLens]"

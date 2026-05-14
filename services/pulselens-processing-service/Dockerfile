@@ -9,6 +9,7 @@ RUN GOWORK=off go build -o /out/pulselens-processing-service .
 
 FROM debian:bookworm-slim
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /out/pulselens-processing-service /app/pulselens-processing-service
 COPY services/pulselens-processing-service/configs/docker.yaml /app/configs/config.yaml
 

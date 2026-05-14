@@ -1,4 +1,5 @@
 bin/
+LOCAL_OPERATOR_GUIDE.md
 services/pulselens-ui/dist/
 services/pulselens-ui/node_modules/
 services/pulselens-ui/node_modules/.vite/

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -133,12 +134,25 @@ func GetStringSlice(path string) []string {
 			result = append(result, toString(item))
 		}
 		return result
+	case string:
+		parts := strings.Split(typed, ",")
+		result := make([]string, 0, len(parts))
+		for _, item := range parts {
+			trimmed := strings.TrimSpace(item)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		return result
 	default:
 		return nil
 	}
 }
 
 func Get(path string) any {
+	if value, ok := lookupEnvOverride(path); ok {
+		return value
+	}
 	if manager == nil {
 		return nil
 	}
@@ -175,4 +189,34 @@ func toString(value any) string {
 	default:
 		return ""
 	}
+}
+
+func EnvKey(path string) string {
+	replacer := regexp.MustCompile(`([a-z0-9])([A-Z])`)
+	parts := strings.Split(strings.TrimSpace(path), ".")
+	normalized := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if strings.TrimSpace(part) == "" {
+			continue
+		}
+		snake := replacer.ReplaceAllString(part, `${1}_${2}`)
+		snake = strings.ReplaceAll(snake, "-", "_")
+		snake = strings.ReplaceAll(snake, " ", "_")
+		normalized = append(normalized, strings.ToUpper(snake))
+	}
+	return "PULSELENS_" + strings.Join(normalized, "_")
+}
+
+func HasEnvOverride(path string) bool {
+	_, ok := lookupEnvOverride(path)
+	return ok
+}
+
+func lookupEnvOverride(path string) (string, bool) {
+	key := EnvKey(path)
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return "", false
+	}
+	return strings.TrimSpace(value), true
 }

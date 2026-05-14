@@ -1,16 +1,16 @@
 service:
   name: pulselens-archive-service
 server:
-  port: ":8086"
+  port: "127.0.0.1:8086"
 postgres:
-  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5433 sslmode=disable"
 redis:
   hosts:
     - "localhost:6381"
   db: 0
 kafka:
   brokers:
-    - "localhost:9092"
+    - "localhost:9093"
   topics:
     logs: "pulselens.logs.v1"
     metrics: "pulselens.metrics.v1"
@@ -20,10 +20,10 @@ jwt:
   secret: "pulselens-local-secret"
 archive:
   enabled: true
-  endpoint: "http://localhost:4566"
+  endpoint: "http://localhost:9010"
   region: "us-east-1"
-  accessKey: "test"
-  secretKey: "test"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
   bucket: "pulselens-archive"
   prefix: "raw"
   forcePathStyle: true

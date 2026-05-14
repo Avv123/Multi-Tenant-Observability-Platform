@@ -8,6 +8,7 @@ import (
 	platformbackpressure "github.com/omniful/pulselens-platform/backpressure"
 	"github.com/omniful/pulselens-platform/config"
 	platformkafka "github.com/omniful/pulselens-platform/kafka"
+	platformobjectstore "github.com/omniful/pulselens-platform/objectstore"
 	platformredis "github.com/omniful/pulselens-platform/redis"
 	platformruntime "github.com/omniful/pulselens-platform/runtime"
 	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
@@ -32,7 +33,7 @@ func (s *Service) CleanupRuns(ctx context.Context, limit int) ([]observabilitymo
 
 func (s *Service) DependencyHealth(ctx context.Context) []observabilityresponses.DependencyHealthRow {
 	now := time.Now().UTC().Format(time.RFC3339)
-	rows := make([]observabilityresponses.DependencyHealthRow, 0, 4)
+	rows := make([]observabilityresponses.DependencyHealthRow, 0, 5)
 
 	rows = append(rows, dependencyRow("redis", "cache", now, func() error {
 		return freshRedisPing(ctx)
@@ -49,6 +50,22 @@ func (s *Service) DependencyHealth(ctx context.Context) []observabilityresponses
 	}))
 	rows = append(rows, dependencyRow("kafka", "queue", now, func() error {
 		return platformkafka.Ping(ctx, config.GetStringSlice("kafka.brokers"))
+	}))
+	rows = append(rows, dependencyRow("minio", "objectstore", now, func() error {
+		client, err := platformobjectstore.New(
+			config.GetBool("archive.enabled"),
+			config.GetString("archive.endpoint"),
+			config.GetString("archive.region"),
+			config.GetString("archive.accessKey"),
+			config.GetString("archive.secretKey"),
+			config.GetString("archive.bucket"),
+			config.GetString("archive.prefix"),
+			config.GetBool("archive.forcePathStyle"),
+		)
+		if err != nil {
+			return err
+		}
+		return client.Ping(ctx)
 	}))
 	return rows
 }

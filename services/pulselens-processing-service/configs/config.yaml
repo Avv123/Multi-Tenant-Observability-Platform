@@ -1,9 +1,9 @@
 service:
   name: pulselens-processing-service
 server:
-  port: ":8083"
+  port: "127.0.0.1:8083"
 postgres:
-  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5433 sslmode=disable"
 clickhouse:
   enabled: true
   baseUrl: "http://localhost:8123"
@@ -16,7 +16,7 @@ redis:
   db: 0
 kafka:
   brokers:
-    - "localhost:9092"
+    - "localhost:9093"
   groupId: "pulselens-processing-v1"
   topics:
     logs: "pulselens.logs.v1"
@@ -34,10 +34,10 @@ retention:
   cleanupIntervalSeconds: 20
 archive:
   enabled: true
-  endpoint: "http://localhost:4566"
+  endpoint: "http://localhost:9010"
   region: "us-east-1"
-  accessKey: "test"
-  secretKey: "test"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
   bucket: "pulselens-archive"
   prefix: "raw"
   forcePathStyle: true

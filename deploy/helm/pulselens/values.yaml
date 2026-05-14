@@ -166,6 +166,15 @@ configs:
       customMaxPending: 1000
     cache:
       ttlSeconds: 5
+    archive:
+      enabled: true
+      endpoint: "http://minio:9000"
+      region: "us-east-1"
+      accessKey: "minioadmin"
+      secretKey: "minioadmin"
+      bucket: "pulselens-archive"
+      prefix: "raw"
+      forcePathStyle: true
   alerting: |
     service:
       name: pulselens-alerting-service
@@ -223,4 +232,3 @@ configs:
     runtime:
       heartbeatIntervalSeconds: 5
       heartbeatTTLSeconds: 15
-

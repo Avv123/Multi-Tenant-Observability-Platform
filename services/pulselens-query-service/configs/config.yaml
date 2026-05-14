@@ -1,9 +1,9 @@
 service:
   name: pulselens-query-service
 server:
-  port: ":8084"
+  port: "127.0.0.1:8084"
 postgres:
-  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5432 sslmode=disable"
+  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5433 sslmode=disable"
 clickhouse:
   enabled: true
   baseUrl: "http://localhost:8123"
@@ -16,7 +16,7 @@ redis:
   db: 0
 kafka:
   brokers:
-    - "localhost:9092"
+    - "localhost:9093"
   groups:
     processing: "pulselens-processing-v1"
   topics:
@@ -40,3 +40,12 @@ backpressure:
   customMaxPending: 1000
 cache:
   ttlSeconds: 5
+archive:
+  enabled: true
+  endpoint: "http://localhost:9010"
+  region: "us-east-1"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
+  bucket: "pulselens-archive"
+  prefix: "raw"
+  forcePathStyle: true

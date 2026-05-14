@@ -136,6 +136,8 @@ This document maps the implemented system-design concerns to the current codebas
 
 - the repo now owns a complete `docker-compose` stack definition
 - every service has a container build definition
+- Compose is the only supported local runtime for the hardening path
+- port ownership is explicit and enforced through preflight checks
 - optional Helm assets exist for local Kubernetes experimentation
 - dependency health and Kafka lag are projected into the query/API layer so infra state is observable from the product itself
 - Kubernetes validation stays offline-first:
@@ -219,6 +221,14 @@ This document maps the implemented system-design concerns to the current codebas
 - full SSO/MFA identity layer
 - billing and commercial plan enforcement
 
+## Local Runtime Contract
+
+- PulseLens runs locally through `docker compose`, not a mixed host-process model
+- `/health` proves process liveness
+- `/ready` proves dependency usability for real traffic
+- startup conflicts are reported through `scripts/check_required_ports.sh`
+- optional host-run binaries may still exist for development, but they are not part of the supported hardening or validation path
+
 ## Why This Is Still Production-Shaped
 
 Even without the expensive production infra, the system already exercises the important architecture concerns:
@@ -235,3 +245,14 @@ Even without the expensive production infra, the system already exercises the im
 - webhook notifications
 - alert evaluation
 - structured package boundaries
+
+## Local Hardening Delta
+
+The local-first hardening layer now adds:
+
+- explicit liveness vs readiness separation
+- dependency preflight checks before service boot
+- backup and restore drills for control-plane, hot-store, and archive data
+- threshold-based local SLO gates for load and soak tests
+- Kafka, Postgres, and MinIO chaos drills
+- API key rotation and revocation as the local security baseline

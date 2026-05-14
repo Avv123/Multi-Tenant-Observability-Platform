@@ -1,14 +1,14 @@
 service:
   name: pulselens-ingest-service
 server:
-  port: ":8082"
+  port: "127.0.0.1:8082"
 redis:
   hosts:
     - "localhost:6381"
   db: 0
 kafka:
   brokers:
-    - "localhost:9092"
+    - "localhost:9093"
   topics:
     logs: "pulselens.logs.v1"
     metrics: "pulselens.metrics.v1"

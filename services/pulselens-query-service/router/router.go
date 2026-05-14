@@ -11,6 +11,8 @@ import (
 	"github.com/omniful/pulselens-platform/cors"
 	"github.com/omniful/pulselens-platform/httpserver"
 	"github.com/omniful/pulselens-platform/middleware"
+	platformreadiness "github.com/omniful/pulselens-platform/readiness"
+	appinit "github.com/omniful/pulselens-query-service/init"
 	querycontrollers "github.com/omniful/pulselens-query-service/internal/observability/controllers"
 	querymiddleware "github.com/omniful/pulselens-query-service/internal/observability/middleware"
 )
@@ -21,6 +23,14 @@ func Initialize(ctx context.Context, server *httpserver.Server) error {
 	server.Engine.Use(gin.Recovery())
 	server.Engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
+	})
+	server.Engine.GET("/ready", func(c *gin.Context) {
+		rows := appinit.Readiness(c.Request.Context())
+		status := http.StatusOK
+		if !allHealthy(rows) {
+			status = http.StatusServiceUnavailable
+		}
+		c.JSON(status, gin.H{"status": readinessStatus(rows), "dependencies": rows})
 	})
 
 	controller, err := querycontrollers.NewController(ctx)
@@ -71,4 +81,20 @@ func Initialize(ctx context.Context, server *httpserver.Server) error {
 		c.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 	})
 	return nil
+}
+
+func allHealthy(rows []platformreadiness.DependencyStatus) bool {
+	for _, row := range rows {
+		if row.Status != "healthy" {
+			return false
+		}
+	}
+	return true
+}
+
+func readinessStatus(rows []platformreadiness.DependencyStatus) string {
+	if allHealthy(rows) {
+		return "ready"
+	}
+	return "degraded"
 }

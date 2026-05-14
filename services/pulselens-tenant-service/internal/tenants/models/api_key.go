@@ -11,6 +11,9 @@ type APIKey struct {
 	KeyHash    string     `gorm:"uniqueIndex;not null" json:"-"`
 	Scopes     string     `gorm:"type:jsonb;default:'[]'" json:"scopes"`
 	Active     bool       `gorm:"not null;default:true" json:"active"`
+	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
+	RotatedAt  *time.Time `json:"rotated_at,omitempty"`
+	ReplacedBy string     `gorm:"type:text" json:"replaced_by,omitempty"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`

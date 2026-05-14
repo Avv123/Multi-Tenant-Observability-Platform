@@ -73,7 +73,7 @@ This document describes the repository exactly as implemented and tested.
   - cleanup run visibility
   - saved queries
   - saved dashboards
-  - legacy embedded UI path, while Vite preview on `:3000` remains the authoritative local UI
+  - legacy embedded UI path, while the dedicated Compose-owned UI service on `:3000` remains the authoritative local UI
 - `services/pulselens-alerting-service`
   - alert rule CRUD
   - incident listing
@@ -106,6 +106,8 @@ This document describes the repository exactly as implemented and tested.
 - per-service `Dockerfile`
 - docker-specific config files under every service `configs/docker.yaml`
 - optional Helm chart under `deploy/helm/pulselens`
+- Compose-owned UI service on `:3000`
+- `/ready` healthchecks for app services in Compose
 
 ## Package Layout Standard
 
@@ -167,6 +169,8 @@ Beyond the first working cut, the implementation now includes:
 - soak-test script for sustained ingest/query pressure
 - failure-drill script for notification-path failure validation
 - docker-compose packaging for a repo-owned runtime
+- Compose-only local runtime with explicit port-conflict preflight
+- Compose-owned backup, restore, and chaos scripts
 - optional Helm assets for local Kubernetes experimentation
 
 ## End-to-End Data Flow
@@ -288,11 +292,11 @@ Passed:
 
 Passed:
 
-- `python3 scripts/smoke_test.py`
+- `python3 scripts/test_end_to_end.py`
 - `bash scripts/curl_smoke.sh`
-- `python3 scripts/load_test.py`
-- `python3 scripts/soak_test.py`
-- `python3 scripts/failure_drill.py`
+- `python3 scripts/test_load.py`
+- `python3 scripts/test_sustained_load.py`
+- `python3 scripts/test_notification_failures.py`
 - `npx playwright test`
 
 Observed results from the latest run:
@@ -327,9 +331,9 @@ Passed:
 
 Passed:
 
-- `python3 scripts/smoke_test.py`
+- `python3 scripts/test_end_to_end.py`
 - `bash scripts/curl_smoke.sh`
-- `python3 scripts/load_test.py`
+- `python3 scripts/test_load.py`
 
 Latest load-test result:
 
@@ -346,7 +350,7 @@ Latest load-test result:
 
 Passed:
 
-- `python3 scripts/smoke_test.py`
+- `python3 scripts/test_end_to_end.py`
 - `bash scripts/curl_smoke.sh`
 
 Observed live results included:
@@ -371,15 +375,15 @@ Observed live results included:
 - backpressure snapshot visibility
 - cleanup run visibility
 - audit log retrieval
-- Vite preview UI served on `http://127.0.0.1:3000`
+- Compose-owned UI served on `http://127.0.0.1:3000`
 
 ## Local Run Order
 
-1. `bash scripts/setup_local_infra.sh`
-2. `cd services/pulselens-ui && npm install && npm run build`
-3. `bash scripts/run_local_services.sh`
+1. `bash scripts/check_required_ports.sh`
+2. `docker compose up -d --build`
+3. `bash scripts/wait_for_compose_stack.sh`
 4. open `http://127.0.0.1:3000`
-5. optionally run `python3 scripts/smoke_test.py`
+5. optionally run `python3 scripts/test_end_to_end.py`
 6. optionally run `bash scripts/curl_smoke.sh`
 
 ## Known Trade-Offs
@@ -391,3 +395,12 @@ Observed live results included:
 - no full permission matrix or SSO/MFA layer beyond the current tenant roles
 
 These are intentional scope limits for a local-first, zero-recurring-cost version, while keeping the codebase production-shaped.
+
+## Local Production Hardening Additions
+
+- `/ready` endpoints and startup preflight checks across backend services
+- backup and restore scripts for Postgres, ClickHouse, and MinIO
+- restore-drill validation instead of backup-only assumptions
+- chaos drills for Kafka, Postgres, and MinIO in addition to Redis and ClickHouse
+- benchmark threshold gates and local benchmark report output
+- tenant API key rotation and revocation

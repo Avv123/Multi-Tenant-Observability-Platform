@@ -18,6 +18,10 @@ func Errorf(format string, args ...any) {
 	log.Printf("ERROR "+format, args...)
 }
 
+func Warnf(format string, args ...any) {
+	log.Printf("WARN "+format, args...)
+}
+
 func Fatalf(format string, args ...any) {
 	log.Fatalf("FATAL "+format, args...)
 }

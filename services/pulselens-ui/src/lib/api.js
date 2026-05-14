@@ -63,6 +63,25 @@ export const tenantApi = {
       body: JSON.stringify(body),
     });
   },
+  listAPIKeys(token) {
+    return request("tenant", "/admin/api/v1/api-keys", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  rotateAPIKey(keyId, body, token) {
+    return request("tenant", `/admin/api/v1/api-keys/${keyId}/rotate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body || {}),
+    });
+  },
+  revokeAPIKey(keyId, token) {
+    return request("tenant", `/admin/api/v1/api-keys/${keyId}/revoke`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({}),
+    });
+  },
   login(body) {
     return request("tenant", "/api/v1/auth/login", {
       method: "POST",

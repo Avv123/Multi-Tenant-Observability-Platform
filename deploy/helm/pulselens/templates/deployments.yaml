@@ -21,6 +21,18 @@ spec:
           env:
             - name: CONFIG_PATH
               value: /app/configs/config.yaml
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ index $root.Values.services $name "port" }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ index $root.Values.services $name "port" }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
           volumeMounts:
             - name: config
               mountPath: /app/configs
@@ -32,4 +44,3 @@ spec:
             name: pulselens-{{ $name }}-config
 ---
 {{- end }}
-

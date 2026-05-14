@@ -2,12 +2,15 @@ package router
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/omniful/pulselens-platform/authz"
 	"github.com/omniful/pulselens-platform/cors"
 	"github.com/omniful/pulselens-platform/httpserver"
 	"github.com/omniful/pulselens-platform/middleware"
+	platformreadiness "github.com/omniful/pulselens-platform/readiness"
+	appinit "github.com/omniful/pulselens-tenant-service/init"
 	tenantcontrollers "github.com/omniful/pulselens-tenant-service/internal/tenants/controllers"
 )
 
@@ -17,6 +20,14 @@ func Initialize(ctx context.Context, s *httpserver.Server) error {
 	s.Engine.Use(gin.Recovery())
 	s.Engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
+	})
+	s.Engine.GET("/ready", func(c *gin.Context) {
+		rows := appinit.Readiness(c.Request.Context())
+		status := http.StatusOK
+		if !allHealthy(rows) {
+			status = http.StatusServiceUnavailable
+		}
+		c.JSON(status, gin.H{"status": readinessStatus(rows), "dependencies": rows})
 	})
 
 	ctrl, err := tenantcontrollers.NewController(ctx)
@@ -50,6 +61,7 @@ func Initialize(ctx context.Context, s *httpserver.Server) error {
 	admin.Use(tenantcontrollers.AuthenticateJWT(ctx))
 	admin.Use(authz.RequireRoles(authz.RoleTenantAdmin))
 	{
+		admin.GET("/api-keys", ctrl.ListAPIKeys)
 		admin.GET("/tenants/:tenant_id", ctrl.GetTenant)
 		admin.GET("/tenants/:tenant_id/services", ctrl.ListServices)
 		admin.GET("/tenants/:tenant_id/api-keys", ctrl.ListAPIKeys)
@@ -58,7 +70,25 @@ func Initialize(ctx context.Context, s *httpserver.Server) error {
 		admin.POST("/tenants/:tenant_id/services", ctrl.CreateService)
 		admin.POST("/tenants/:tenant_id/users", ctrl.CreateUser)
 		admin.POST("/api-keys", ctrl.CreateAPIKey)
+		admin.POST("/api-keys/:key_id/rotate", ctrl.RotateAPIKey)
+		admin.POST("/api-keys/:key_id/revoke", ctrl.RevokeAPIKey)
 	}
 
 	return nil
+}
+
+func allHealthy(rows []platformreadiness.DependencyStatus) bool {
+	for _, row := range rows {
+		if row.Status != "healthy" {
+			return false
+		}
+	}
+	return true
+}
+
+func readinessStatus(rows []platformreadiness.DependencyStatus) string {
+	if allHealthy(rows) {
+		return "ready"
+	}
+	return "degraded"
 }

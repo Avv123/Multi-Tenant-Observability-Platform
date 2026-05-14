@@ -124,15 +124,54 @@ func (c *Controller) CreateAPIKey(ctx *gin.Context) {
 }
 
 func (c *Controller) ListAPIKeys(ctx *gin.Context) {
-	if strings.HasPrefix(ctx.FullPath(), "/admin/") && !authorizeTenant(ctx, ctx.Param("tenant_id")) {
+	if strings.HasPrefix(ctx.FullPath(), "/admin/") && ctx.Param("tenant_id") != "" && !authorizeTenant(ctx, ctx.Param("tenant_id")) {
 		return
 	}
-	rows, customError := c.service.ListAPIKeys(ctx, ctx.Param("tenant_id"))
+	tenantID := ctx.Param("tenant_id")
+	if tenantID == "" {
+		claims, ok := claimsFromContext(ctx)
+		if !ok {
+			tenanterror.NewErrorResponse(ctx, platformerrs.New(tenanterror.Unauthorized, "missing auth claims"))
+			return
+		}
+		tenantID = claims.TenantID
+	}
+	rows, customError := c.service.ListAPIKeys(ctx, tenantID)
 	if customError.Exists() {
 		tenanterror.NewErrorResponse(ctx, customError)
 		return
 	}
 	platformresponse.Success(ctx, rows)
+}
+
+func (c *Controller) RotateAPIKey(ctx *gin.Context) {
+	claims, ok := claimsFromContext(ctx)
+	if !ok {
+		tenanterror.NewErrorResponse(ctx, platformerrs.New(tenanterror.Unauthorized, "missing auth claims"))
+		return
+	}
+	var request tenantrequests.RotateAPIKeyRequest
+	_ = ctx.ShouldBindJSON(&request)
+	row, customError := c.service.RotateAPIKey(ctx, claims.UserID, claims.TenantID, ctx.Param("key_id"), request.Name)
+	if customError.Exists() {
+		tenanterror.NewErrorResponse(ctx, customError)
+		return
+	}
+	platformresponse.Success(ctx, row)
+}
+
+func (c *Controller) RevokeAPIKey(ctx *gin.Context) {
+	claims, ok := claimsFromContext(ctx)
+	if !ok {
+		tenanterror.NewErrorResponse(ctx, platformerrs.New(tenanterror.Unauthorized, "missing auth claims"))
+		return
+	}
+	customError := c.service.RevokeAPIKey(ctx, claims.UserID, claims.TenantID, ctx.Param("key_id"))
+	if customError.Exists() {
+		tenanterror.NewErrorResponse(ctx, customError)
+		return
+	}
+	platformresponse.Success(ctx, gin.H{"id": ctx.Param("key_id"), "status": "revoked"})
 }
 
 func (c *Controller) ResolveAPIKey(ctx *gin.Context) {

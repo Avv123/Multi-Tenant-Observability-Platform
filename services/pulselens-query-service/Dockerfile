@@ -16,6 +16,7 @@ RUN GOWORK=off go build -o /out/pulselens-query-service .
 
 FROM debian:bookworm-slim
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=go-builder /out/pulselens-query-service /app/pulselens-query-service
 COPY services/pulselens-query-service/configs/docker.yaml /app/configs/config.yaml
 COPY --from=ui-builder /workspace/services/pulselens-ui/dist /app/ui

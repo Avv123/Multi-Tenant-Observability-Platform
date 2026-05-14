@@ -30,6 +30,9 @@ func main() {
 	defer stop()
 
 	idgen.Configure(idgen.NodeIDFromServiceName(config.GetString("service.name")))
+	if err := appinit.Preflight(ctx); err != nil {
+		logging.Fatalf("startup preflight failed: %v", err)
+	}
 	appinit.Initialize(ctx)
 	platformruntime.Start(ctx, alertredis.Get(), platformruntime.HeartbeatOptions{
 		ServiceName: config.GetString("service.name"),

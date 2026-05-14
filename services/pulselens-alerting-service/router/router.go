@@ -2,14 +2,17 @@ package router
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
+	appinit "github.com/omniful/pulselens-alerting-service/init"
 	alertcontrollers "github.com/omniful/pulselens-alerting-service/internal/alerts/controllers"
 	alertmiddleware "github.com/omniful/pulselens-alerting-service/internal/alerts/middleware"
 	"github.com/omniful/pulselens-platform/authz"
 	"github.com/omniful/pulselens-platform/cors"
 	"github.com/omniful/pulselens-platform/httpserver"
 	platformmiddleware "github.com/omniful/pulselens-platform/middleware"
+	platformreadiness "github.com/omniful/pulselens-platform/readiness"
 )
 
 func Initialize(ctx context.Context, server *httpserver.Server) error {
@@ -18,6 +21,14 @@ func Initialize(ctx context.Context, server *httpserver.Server) error {
 	server.Engine.Use(gin.Recovery())
 	server.Engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
+	})
+	server.Engine.GET("/ready", func(c *gin.Context) {
+		rows := appinit.Readiness(c.Request.Context())
+		status := http.StatusOK
+		if !allHealthy(rows) {
+			status = http.StatusServiceUnavailable
+		}
+		c.JSON(status, gin.H{"status": readinessStatus(rows), "dependencies": rows})
 	})
 
 	controller, err := alertcontrollers.NewController(ctx)
@@ -46,4 +57,20 @@ func Initialize(ctx context.Context, server *httpserver.Server) error {
 	api.POST("/notification-channels", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleAlertManager), controller.CreateNotificationChannel)
 	api.GET("/notification-deliveries", authz.RequireRoles(authz.RoleTenantAdmin, authz.RoleAlertManager, authz.RoleOperator), controller.ListNotificationDeliveries)
 	return nil
+}
+
+func allHealthy(rows []platformreadiness.DependencyStatus) bool {
+	for _, row := range rows {
+		if row.Status != "healthy" {
+			return false
+		}
+	}
+	return true
+}
+
+func readinessStatus(rows []platformreadiness.DependencyStatus) string {
+	if allHealthy(rows) {
+		return "ready"
+	}
+	return "degraded"
 }

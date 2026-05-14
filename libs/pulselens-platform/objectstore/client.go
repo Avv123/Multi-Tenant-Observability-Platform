@@ -103,6 +103,14 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	return err
 }
 
+func (c *Client) Ping(ctx context.Context) error {
+	if !c.Enabled() {
+		return nil
+	}
+	_, err := c.client.ListBuckets(ctx, &s3.ListBucketsInput{})
+	return err
+}
+
 func (c *Client) PutObject(ctx context.Context, key string, payload []byte, contentType string) (string, error) {
 	if !c.Enabled() {
 		return "", nil

@@ -96,8 +96,53 @@ func (r *Repository) GetAPIKeyByHash(ctx context.Context, hash string) (models.A
 	return row, err
 }
 
+func (r *Repository) GetAPIKeyByID(ctx context.Context, keyID string) (models.APIKey, error) {
+	var row models.APIKey
+	err := r.db.WithContext(ctx).Where("id = ?", keyID).First(&row).Error
+	return row, err
+}
+
 func (r *Repository) TouchAPIKey(ctx context.Context, keyID string) error {
 	return r.db.WithContext(ctx).Model(&models.APIKey{}).Where("id = ?", keyID).Update("last_used_at", gorm.Expr("now()")).Error
+}
+
+func (r *Repository) RotateAPIKey(ctx context.Context, current *models.APIKey, replacement *models.APIKey, auditLog *models.AuditLog) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(replacement).Error; err != nil {
+			return err
+		}
+		updates := map[string]any{
+			"active":      false,
+			"rotated_at":  gorm.Expr("now()"),
+			"replaced_by": replacement.ID,
+		}
+		if err := tx.Model(&models.APIKey{}).Where("id = ?", current.ID).Updates(updates).Error; err != nil {
+			return err
+		}
+		if auditLog != nil {
+			if err := tx.Create(auditLog).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *Repository) RevokeAPIKey(ctx context.Context, keyID string, auditLog *models.AuditLog) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.APIKey{}).Where("id = ?", keyID).Updates(map[string]any{
+			"active":     false,
+			"revoked_at": gorm.Expr("now()"),
+		}).Error; err != nil {
+			return err
+		}
+		if auditLog != nil {
+			if err := tx.Create(auditLog).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (models.User, error) {

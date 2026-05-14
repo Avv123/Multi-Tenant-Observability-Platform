@@ -199,6 +199,10 @@ func (s *Service) ListAPIKeys(ctx context.Context, tenantID string) ([]models.AP
 	return rows, errs.CustomError{}
 }
 
+func (s *Service) ListAPIKeysForClaims(ctx context.Context, tenantID string) ([]models.APIKey, errs.CustomError) {
+	return s.ListAPIKeys(ctx, tenantID)
+}
+
 func (s *Service) ResolveAPIKey(ctx context.Context, rawKey string) (pulsetenant.ResolvedAPIKey, errs.CustomError) {
 	keyModel, err := s.repository.GetAPIKeyByHash(ctx, hashAPIKey(rawKey))
 	if err != nil {
@@ -235,6 +239,95 @@ func (s *Service) ResolveAPIKey(ctx context.Context, rawKey string) (pulsetenant
 		Scopes:      scopes,
 		Active:      keyModel.Active,
 	}, errs.CustomError{}
+}
+
+func (s *Service) RotateAPIKey(ctx context.Context, actorUserID string, tenantID string, keyID string, name string) (tenantresponses.CreateAPIKeyResponse, errs.CustomError) {
+	keyModel, err := s.repository.GetAPIKeyByID(ctx, keyID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return tenantresponses.CreateAPIKeyResponse{}, errs.New(tenanterror.NotFound, "api key not found")
+		}
+		return tenantresponses.CreateAPIKeyResponse{}, mapDBError(err)
+	}
+	if keyModel.TenantID != tenantID {
+		return tenantresponses.CreateAPIKeyResponse{}, errs.New(tenanterror.Forbidden, "tenant access denied")
+	}
+	if !keyModel.Active {
+		return tenantresponses.CreateAPIKeyResponse{}, errs.New(tenanterror.BadRequest, "api key is already inactive")
+	}
+
+	rawKey, err := generateAPIKey()
+	if err != nil {
+		return tenantresponses.CreateAPIKeyResponse{}, errs.New(tenanterror.InternalServer, err.Error())
+	}
+
+	replacement := models.APIKey{
+		ID:         idgen.New("key"),
+		TenantID:   keyModel.TenantID,
+		ServiceID:  keyModel.ServiceID,
+		Name:       firstNonEmpty(strings.TrimSpace(name), keyModel.Name+"-rotated"),
+		KeyPrefix:  rawKey[:16],
+		KeyHash:    hashAPIKey(rawKey),
+		Scopes:     keyModel.Scopes,
+		Active:     true,
+		RotatedAt:  nil,
+		RevokedAt:  nil,
+		ReplacedBy: "",
+	}
+	scopes := make([]pulsetenant.APIKeyScope, 0)
+	_ = json.Unmarshal([]byte(keyModel.Scopes), &scopes)
+	auditLog := &models.AuditLog{
+		ID:           idgen.New("audit"),
+		TenantID:     keyModel.TenantID,
+		ActorUserID:  actorUserID,
+		ActorType:    actorType(actorUserID),
+		Action:       "api_key.rotated",
+		ResourceType: "api_key",
+		ResourceID:   keyModel.ID,
+		Payload:      marshalJSON(genericPayload{"replaced_by": replacement.ID, "service_id": keyModel.ServiceID}),
+	}
+	if err = s.repository.RotateAPIKey(ctx, &keyModel, &replacement, auditLog); err != nil {
+		return tenantresponses.CreateAPIKeyResponse{}, mapDBError(err)
+	}
+	return tenantresponses.CreateAPIKeyResponse{
+		ID:        replacement.ID,
+		TenantID:  replacement.TenantID,
+		ServiceID: replacement.ServiceID,
+		Name:      replacement.Name,
+		Key:       rawKey,
+		KeyPrefix: replacement.KeyPrefix,
+		Scopes:    scopes,
+	}, errs.CustomError{}
+}
+
+func (s *Service) RevokeAPIKey(ctx context.Context, actorUserID string, tenantID string, keyID string) errs.CustomError {
+	keyModel, err := s.repository.GetAPIKeyByID(ctx, keyID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errs.New(tenanterror.NotFound, "api key not found")
+		}
+		return mapDBError(err)
+	}
+	if keyModel.TenantID != tenantID {
+		return errs.New(tenanterror.Forbidden, "tenant access denied")
+	}
+	if !keyModel.Active {
+		return errs.New(tenanterror.BadRequest, "api key is already inactive")
+	}
+	auditLog := &models.AuditLog{
+		ID:           idgen.New("audit"),
+		TenantID:     keyModel.TenantID,
+		ActorUserID:  actorUserID,
+		ActorType:    actorType(actorUserID),
+		Action:       "api_key.revoked",
+		ResourceType: "api_key",
+		ResourceID:   keyModel.ID,
+		Payload:      marshalJSON(genericPayload{"service_id": keyModel.ServiceID}),
+	}
+	if err = s.repository.RevokeAPIKey(ctx, keyModel.ID, auditLog); err != nil {
+		return mapDBError(err)
+	}
+	return errs.CustomError{}
 }
 
 func (s *Service) Login(ctx context.Context, request *tenantrequests.LoginRequest) (tenantresponses.LoginResponse, errs.CustomError) {
@@ -341,6 +434,15 @@ func actorType(actorUserID string) string {
 		return "internal"
 	}
 	return "user"
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func mapDBError(err error) errs.CustomError {
