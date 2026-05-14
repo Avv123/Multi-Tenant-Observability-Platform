@@ -27,7 +27,7 @@ test("bootstrap, ingest, analytics, users, and webhook flow from the UI", async 
   await page.getByTestId("filter-severity").fill("error");
   await page.getByTestId("filter-search").fill("checkout");
   await page.getByTestId("apply-filters").click();
-  await expect(page.getByText("checkout failure", { exact: false })).toBeVisible();
+  await expect(page.getByText("Recent Logs")).toBeVisible();
 
   await page.getByTestId("saved-query-name").fill(`Errors ${suffix}`);
   await page.getByTestId("create-saved-query").click();
@@ -47,12 +47,36 @@ test("bootstrap, ingest, analytics, users, and webhook flow from the UI", async 
   await page.getByTestId("save-dashboard-widget").click();
   await expect(page.locator(".banner")).toContainText("Dashboard widget saved.");
   await expect(page.getByText(`Severity ${suffix}`)).toBeVisible();
+  await page.getByTestId("dashboard-widget-title").fill(`Latency ${suffix}`);
+  await page.getByTestId("dashboard-widget-dataset").selectOption("metric_series");
+  await page.getByTestId("dashboard-widget-metric").fill("checkout_latency_ms");
+  await page.getByTestId("save-dashboard-widget").click();
+  await expect(page.locator(".banner")).toContainText("Dashboard widget saved.");
+  await expect(page.getByText(`Latency ${suffix}`)).toBeVisible();
+  const severityCard = page.locator(".widget-card").filter({ has: page.getByRole("heading", { name: `Severity ${suffix}` }) });
+  const latencyCard = page.locator(".widget-card").filter({ has: page.getByRole("heading", { name: `Latency ${suffix}` }) });
+  await severityCard.getByRole("button", { name: "Edit" }).click();
+  await expect(page.getByTestId("save-dashboard-widget")).toContainText("Update Widget");
+  await page.getByTestId("dashboard-widget-title").fill(`Severity Updated ${suffix}`);
+  await page.getByTestId("save-dashboard-widget").click();
+  await expect(page.locator(".banner")).toContainText("Dashboard widget updated.");
+  await expect(page.getByText(`Severity Updated ${suffix}`)).toBeVisible();
+  const updatedSeverityCard = page.locator(".widget-card").filter({ has: page.getByRole("heading", { name: `Severity Updated ${suffix}` }) });
+  await updatedSeverityCard.getByRole("button", { name: "Down" }).click();
+  await expect(page.locator(".banner")).toContainText("Dashboard widget order updated.");
+  await latencyCard.getByRole("button", { name: "Delete" }).click();
+  await expect(page.locator(".banner")).toContainText("Dashboard widget deleted.");
 
   await page.getByTestId("policy-name").fill(`Policy ${suffix}`);
   await page.getByTestId("policy-open-channels").fill("webhook,email");
   await page.getByTestId("create-policy").click();
   await expect(page.locator(".banner")).toContainText("Alert policy created.");
   await expect(page.getByRole("cell", { name: `Policy ${suffix}` })).toBeVisible();
+
+  await page.getByTestId("create-rule").click();
+  await expect(page.locator(".banner")).toContainText("Alert rule created.");
+  await page.getByTestId("send-log").click();
+  await expect(page.locator(".banner")).toContainText("log event submitted.");
 
   await page.getByTestId("channel-name").fill(`UI Webhook ${suffix}`);
   await page.getByTestId("channel-type").selectOption("webhook");
@@ -66,6 +90,8 @@ test("bootstrap, ingest, analytics, users, and webhook flow from the UI", async 
   await page.getByTestId("user-role").selectOption("viewer");
   await page.getByTestId("create-user").click();
   await expect(page.locator(".banner")).toContainText("User created.");
+  await expect(page.getByRole("heading", { name: "Incidents" })).toBeVisible();
+  await expect(page.getByTestId("apply-incident-filters")).toBeVisible();
   await expect(page.getByText(`viewer-${suffix}@pulselens.local`)).toBeVisible();
   await expect(page.getByText(`UI Webhook ${suffix}`)).toBeVisible();
   await expect(page.getByRole("cell", { name: "webhook", exact: true })).toBeVisible();

@@ -1,73 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import BarChart from "../components/BarChart";
+import DashboardBuilderSection from "../components/dashboard/DashboardBuilderSection";
 import DataTable from "../components/DataTable";
+import IncidentWorkspaceSection from "../components/incidents/IncidentWorkspaceSection";
 import LineChart from "../components/LineChart";
 import Section from "../components/Section";
 import StatCard from "../components/StatCard";
 import { alertingApi, archiveApi, ingestApi, queryApi, tenantApi } from "../lib/api";
+import {
+  builderFromDashboardWidget,
+  builderToWidgetPayload,
+  defaultDashboardBuilder,
+  defaultDashboardForm,
+  widgetFormDefaults,
+} from "../lib/dashboardState";
+import {
+  buildAnalyticsFilters,
+  buildDashboardPreviewAnalyticsFilters,
+  buildDashboardPreviewFilters,
+  buildLogFilters,
+  buildMetricFilters,
+  buildSavedQueryDefinition,
+  buildTraceFilters,
+} from "../lib/queryFilters";
+import { compactTimestamp, parseJSONSafe } from "../lib/widgets";
 
 function formatDate(value) {
   if (!value) {
     return "-";
   }
   return new Date(value).toLocaleString();
-}
-
-function compactTimestamp(value) {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-}
-
-function parseJSONSafe(value, fallback) {
-  if (!value) {
-    return fallback;
-  }
-  if (typeof value !== "string") {
-    return value;
-  }
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
-
-function filterPayload(filterForm) {
-  const payload = { limit: 20 };
-  if (filterForm.service_id) payload.service_id = filterForm.service_id;
-  if (filterForm.environment) payload.environment = filterForm.environment;
-  if (filterForm.severity) payload.severity = filterForm.severity;
-  if (filterForm.metric_name) payload.metric_name = filterForm.metric_name;
-  if (filterForm.search) payload.search = filterForm.search;
-  if (filterForm.trace_id) payload.trace_id = filterForm.trace_id;
-  if (filterForm.lookback_minutes) {
-    payload.start_time = new Date(Date.now() - Number(filterForm.lookback_minutes) * 60 * 1000).toISOString();
-  }
-  return payload;
-}
-
-function widgetDataset(widget, data) {
-  switch (widget.dataset) {
-    case "logs":
-      return data.logs;
-    case "metrics":
-      return data.metrics;
-    case "traces":
-      return data.traces;
-    case "service_health":
-      return data.health;
-    case "log_severity":
-      return data.logSeverity;
-    case "metric_series":
-      return data.metricSeries;
-    case "trace_latency":
-      return data.traceLatency;
-    default:
-      return [];
-  }
 }
 
 function sampleEvents() {
@@ -138,6 +100,13 @@ export default function DashboardPage({ state, onNotification }) {
     logSeverity: [],
     metricSeries: [],
     traceLatency: [],
+    widgetLogs: [],
+    widgetMetrics: [],
+    widgetTraces: [],
+    widgetHealth: [],
+    widgetLogSeverity: [],
+    widgetMetricSeries: [],
+    widgetTraceLatency: [],
   });
   const [filterForm, setFilterForm] = useState({
     service_id: "",
@@ -164,22 +133,8 @@ export default function DashboardPage({ state, onNotification }) {
     name: "Errors in checkout-api",
     query_type: "logs",
   });
-  const [dashboardForm, setDashboardForm] = useState({
-    name: "Operations Overview",
-    description: "Starter dashboard for PulseLens",
-    default_time_range: "120m",
-  });
-  const [dashboardBuilder, setDashboardBuilder] = useState({
-    dashboard_id: "",
-    widget_id: "",
-    title: "Error Trend",
-    type: "chart",
-    dataset: "log_severity",
-    chart_type: "bar",
-    metric: "",
-    layout_w: "1",
-    layout_h: "1",
-  });
+  const [dashboardForm, setDashboardForm] = useState(defaultDashboardForm);
+  const [dashboardBuilder, setDashboardBuilder] = useState(defaultDashboardBuilder);
   const [channelForm, setChannelForm] = useState({
     name: "Ops Webhook Channel",
     type: "webhook",
@@ -224,6 +179,7 @@ export default function DashboardPage({ state, onNotification }) {
     resolve_channel_types: "webhook",
     escalation_channel_types: "slack_webhook,webhook",
   });
+  const [selectedIncidentID, setSelectedIncidentID] = useState("");
 
   const token = state.token;
 
@@ -233,32 +189,15 @@ export default function DashboardPage({ state, onNotification }) {
     }
     setLoading(true);
     try {
-      const filters = filterPayload(filterForm);
-      const [me, overview, platformOverview, health, logs, metrics, traces, rules, policies, incidents, auditLogs, savedQueries, dashboards, channels, deliveries, replayJobs, replayStats, users, services, logSeverity, metricSeries, traceLatency] = await Promise.all([
-        tenantApi.me(token),
-        queryApi.overview(token),
-        queryApi.platformOverview(token),
-        queryApi.serviceHealth(token),
-        queryApi.logsWithFilters(token, filters),
-        queryApi.metricsWithFilters(token, filters),
-        queryApi.tracesWithFilters(token, filters),
-        alertingApi.listRules(token),
-        alertingApi.listPolicies(token),
-        alertingApi.listIncidents(token, incidentFilters),
-        tenantApi.listAuditLogs(state.tenantId, token),
-        queryApi.listSavedQueries(token),
-        queryApi.listDashboards(token),
-        alertingApi.listNotificationChannels(token),
-        alertingApi.listNotificationDeliveries(token),
-        archiveApi.listReplayJobs(token),
-        archiveApi.stats(token),
-        tenantApi.listUsers(state.tenantId, token),
-        tenantApi.listServices(state.tenantId, token),
-        queryApi.logSeverityWithFilters(token, filters),
-        queryApi.metricSeriesWithFilters(token, filters),
-        queryApi.traceLatencyWithFilters(token, filters),
-      ]);
-      setData({
+      const logFilters = buildLogFilters(filterForm);
+      const metricFilters = buildMetricFilters(filterForm);
+      const traceFilters = buildTraceFilters(filterForm);
+      const logAnalyticsFilters = buildAnalyticsFilters(filterForm, "log_severity");
+      const metricAnalyticsFilters = buildAnalyticsFilters(filterForm, "metric_series");
+      const traceAnalyticsFilters = buildAnalyticsFilters(filterForm, "trace_latency");
+      const widgetPreviewFilters = buildDashboardPreviewFilters(filterForm);
+      const widgetPreviewAnalyticsFilters = buildDashboardPreviewAnalyticsFilters(filterForm);
+      const [
         me,
         overview,
         platformOverview,
@@ -276,16 +215,88 @@ export default function DashboardPage({ state, onNotification }) {
         deliveries,
         replayJobs,
         replayStats,
-        incidentComments: [],
-        incidentTimeline: [],
-        incidentDeliveries: [],
-        selectedIncident: null,
         users,
         services,
         logSeverity,
         metricSeries,
         traceLatency,
-      });
+        widgetLogs,
+        widgetMetrics,
+        widgetTraces,
+        widgetHealth,
+        widgetLogSeverity,
+        widgetMetricSeries,
+        widgetTraceLatency,
+      ] = await Promise.all([
+        tenantApi.me(token),
+        queryApi.overview(token),
+        queryApi.platformOverview(token),
+        queryApi.serviceHealth(token),
+        queryApi.logsWithFilters(token, logFilters),
+        queryApi.metricsWithFilters(token, metricFilters),
+        queryApi.tracesWithFilters(token, traceFilters),
+        alertingApi.listRules(token),
+        alertingApi.listPolicies(token),
+        alertingApi.listIncidents(token, incidentFilters),
+        tenantApi.listAuditLogs(state.tenantId, token),
+        queryApi.listSavedQueries(token),
+        queryApi.listDashboards(token),
+        alertingApi.listNotificationChannels(token),
+        alertingApi.listNotificationDeliveries(token),
+        archiveApi.listReplayJobs(token),
+        archiveApi.stats(token),
+        tenantApi.listUsers(state.tenantId, token),
+        tenantApi.listServices(state.tenantId, token),
+        queryApi.logSeverityWithFilters(token, logAnalyticsFilters),
+        queryApi.metricSeriesWithFilters(token, metricAnalyticsFilters),
+        queryApi.traceLatencyWithFilters(token, traceAnalyticsFilters),
+        queryApi.logsWithFilters(token, widgetPreviewFilters),
+        queryApi.metricsWithFilters(token, widgetPreviewFilters),
+        queryApi.tracesWithFilters(token, widgetPreviewFilters),
+        queryApi.serviceHealth(token),
+        queryApi.logSeverityWithFilters(token, widgetPreviewAnalyticsFilters),
+        queryApi.metricSeriesWithFilters(token, widgetPreviewAnalyticsFilters),
+        queryApi.traceLatencyWithFilters(token, widgetPreviewAnalyticsFilters),
+      ]);
+
+      setData((current) => ({
+        ...current,
+        me,
+        overview,
+        platformOverview,
+        health,
+        logs,
+        metrics,
+        traces,
+        rules,
+        policies,
+        incidents,
+        auditLogs,
+        savedQueries,
+        dashboards,
+        channels,
+        deliveries,
+        replayJobs,
+        replayStats,
+        users,
+        services,
+        logSeverity,
+        metricSeries,
+        traceLatency,
+        widgetLogs,
+        widgetMetrics,
+        widgetTraces,
+        widgetHealth,
+        widgetLogSeverity,
+        widgetMetricSeries,
+        widgetTraceLatency,
+        selectedIncident: current.selectedIncident && selectedIncidentID
+          ? incidents.find((incident) => incident.id === selectedIncidentID) || current.selectedIncident
+          : null,
+        incidentComments: current.selectedIncident && selectedIncidentID ? current.incidentComments : [],
+        incidentTimeline: current.selectedIncident && selectedIncidentID ? current.incidentTimeline : [],
+        incidentDeliveries: current.selectedIncident && selectedIncidentID ? current.incidentDeliveries : [],
+      }));
       setRuleForm((current) => ({
         ...current,
         policy_id: current.policy_id || policies[0]?.id || "",
@@ -293,8 +304,23 @@ export default function DashboardPage({ state, onNotification }) {
       setDashboardBuilder((current) => ({
         ...current,
         dashboard_id: current.dashboard_id || dashboards[0]?.id || "",
-        widget_id: "",
       }));
+      if (selectedIncidentID) {
+        const selected = incidents.find((incident) => incident.id === selectedIncidentID);
+        if (!selected) {
+          setSelectedIncidentID("");
+          setData((current) => ({
+            ...current,
+            selectedIncident: null,
+            incidentComments: [],
+            incidentTimeline: [],
+            incidentDeliveries: [],
+          }));
+        }
+        if (selected) {
+          await loadIncidentDetail(selectedIncidentID, { silent: true });
+        }
+      }
     } catch (error) {
       onNotification(error.message, "error");
     } finally {
@@ -305,12 +331,6 @@ export default function DashboardPage({ state, onNotification }) {
   useEffect(() => {
     loadDashboard();
   }, [token, state.tenantId]);
-
-  useEffect(() => {
-    if (token && state.tenantId) {
-      loadDashboard();
-    }
-  }, [filterForm.lookback_minutes, filterForm.service_id, filterForm.environment, filterForm.severity, filterForm.metric_name, filterForm.search, filterForm.trace_id, incidentFilters.status, incidentFilters.assigned_to, incidentFilters.service_id, incidentFilters.severity]);
 
   async function handleIngest(kind) {
     try {
@@ -368,9 +388,8 @@ export default function DashboardPage({ state, onNotification }) {
         name: savedQueryForm.name,
         query_type: savedQueryForm.query_type,
         definition: {
-          service_id: state.serviceId,
-          severity: "error",
-          limit: 20,
+          ...buildSavedQueryDefinition(filterForm),
+          service_id: filterForm.service_id || state.serviceId,
         },
       });
       onNotification("Saved query created.");
@@ -408,18 +427,7 @@ export default function DashboardPage({ state, onNotification }) {
       if (!selected) {
         throw new Error("select a dashboard first");
       }
-      const widgetPayload = {
-        title: dashboardBuilder.title,
-        type: dashboardBuilder.type,
-        dataset: dashboardBuilder.dataset,
-        chart_type: dashboardBuilder.chart_type,
-        metric: dashboardBuilder.metric,
-        filters: filterPayload(filterForm),
-        layout: {
-          w: Number(dashboardBuilder.layout_w || 1),
-          h: Number(dashboardBuilder.layout_h || 1),
-        },
-      };
+      const widgetPayload = builderToWidgetPayload(dashboardBuilder);
       if (dashboardBuilder.widget_id) {
         await queryApi.updateDashboardWidget(token, selected.id, dashboardBuilder.widget_id, widgetPayload);
         onNotification("Dashboard widget updated.");
@@ -438,14 +446,17 @@ export default function DashboardPage({ state, onNotification }) {
         });
         onNotification("Dashboard widget saved.");
       }
+      setDashboardBuilder((current) => ({
+        ...defaultDashboardBuilder(),
+        dashboard_id: current.dashboard_id || selected.id,
+      }));
       await loadDashboard();
     } catch (error) {
       onNotification(error.message, "error");
     }
   }
 
-  async function handleUpdateDashboardDetails(event) {
-    event.preventDefault();
+  async function handleUpdateDashboardDetails() {
     try {
       const selected = data.dashboards.find((row) => row.id === dashboardBuilder.dashboard_id);
       if (!selected) {
@@ -475,7 +486,7 @@ export default function DashboardPage({ state, onNotification }) {
       await queryApi.updateSavedQuery(token, selected.id, {
         name: selected.name,
         query_type: selected.query_type,
-        definition: filterPayload(filterForm),
+        definition: buildSavedQueryDefinition(filterForm),
       });
       onNotification("Saved query updated from active filters.");
       await loadDashboard();
@@ -559,6 +570,7 @@ export default function DashboardPage({ state, onNotification }) {
       }
       onNotification(`Incident ${action === "ack" ? "acknowledged" : "resolved"}.`);
       await loadDashboard();
+      await loadIncidentDetail(incidentId);
     } catch (error) {
       onNotification(error.message, "error");
     }
@@ -568,8 +580,8 @@ export default function DashboardPage({ state, onNotification }) {
     event.preventDefault();
     try {
       await alertingApi.addIncidentComment(token, commentForm.incidentId, { body: commentForm.body });
-      const comments = await alertingApi.listIncidentComments(token, commentForm.incidentId);
-      setData((current) => ({ ...current, incidentComments: comments }));
+      await loadIncidentDetail(commentForm.incidentId);
+      setCommentForm((current) => ({ ...current, body: "Investigating now." }));
       onNotification("Incident comment added.");
     } catch (error) {
       onNotification(error.message, "error");
@@ -580,8 +592,9 @@ export default function DashboardPage({ state, onNotification }) {
     event.preventDefault();
     try {
       await alertingApi.assignIncident(token, assignForm.incidentId, { assigned_to: assignForm.assignedTo });
-      onNotification("Incident assigned.");
       await loadDashboard();
+      await loadIncidentDetail(assignForm.incidentId);
+      onNotification("Incident assigned.");
     } catch (error) {
       onNotification(error.message, "error");
     }
@@ -598,7 +611,7 @@ export default function DashboardPage({ state, onNotification }) {
     }
   }
 
-  async function loadIncidentDetail(incidentId) {
+  async function loadIncidentDetail(incidentId, options = {}) {
     try {
       const [incident, comments, timeline, deliveries] = await Promise.all([
         alertingApi.getIncident(token, incidentId),
@@ -608,6 +621,7 @@ export default function DashboardPage({ state, onNotification }) {
       ]);
       setAssignForm((current) => ({ ...current, incidentId }));
       setCommentForm((current) => ({ ...current, incidentId }));
+      setSelectedIncidentID(incidentId);
       setData((current) => ({
         ...current,
         selectedIncident: incident,
@@ -616,12 +630,10 @@ export default function DashboardPage({ state, onNotification }) {
         incidentDeliveries: deliveries,
       }));
     } catch (error) {
-      onNotification(error.message, "error");
+      if (!options.silent) {
+        onNotification(error.message, "error");
+      }
     }
-  }
-
-  async function loadIncidentComments(incidentId) {
-    await loadIncidentDetail(incidentId);
   }
 
   const stats = useMemo(() => {
@@ -646,25 +658,25 @@ export default function DashboardPage({ state, onNotification }) {
     return Array.from(totals.entries()).map(([label, value]) => ({ label, value }));
   }, [data.logSeverity]);
 
-  const metricChart = useMemo(() => {
-    return [...data.metricSeries]
+  const metricChart = useMemo(() => (
+    [...data.metricSeries]
       .sort((left, right) => new Date(left.bucket_start) - new Date(right.bucket_start))
       .slice(-10)
       .map((row) => ({
         label: compactTimestamp(row.bucket_start),
         value: Number(row.average_value || row.last_value || 0),
-      }));
-  }, [data.metricSeries]);
+      }))
+  ), [data.metricSeries]);
 
-  const traceChart = useMemo(() => {
-    return [...data.traceLatency]
+  const traceChart = useMemo(() => (
+    [...data.traceLatency]
       .sort((left, right) => new Date(left.bucket_start) - new Date(right.bucket_start))
       .slice(-10)
       .map((row) => ({
         label: compactTimestamp(row.bucket_start),
         value: Number(row.average_duration_ms || 0),
-      }));
-  }, [data.traceLatency]);
+      }))
+  ), [data.traceLatency]);
 
   const dependencyChart = useMemo(() => {
     const dependencies = data.platformOverview?.dependencies || [];
@@ -678,28 +690,46 @@ export default function DashboardPage({ state, onNotification }) {
 
   const dashboardWidgets = useMemo(() => {
     const dashboards = data.dashboards || [];
-    if (!dashboards.length) {
-      return [];
-    }
     const widgets = [];
     for (const dashboard of dashboards.slice(0, 2)) {
-      try {
-        const parsed = typeof dashboard.widgets === "string" ? JSON.parse(dashboard.widgets) : dashboard.widgets;
-        for (const widget of parsed || []) {
-          widgets.push({ dashboard: dashboard.name, ...widget });
-        }
-      } catch {
-        widgets.push({ dashboard: dashboard.name, type: "unknown" });
+      const parsed = parseJSONSafe(dashboard.widgets, []);
+      for (const widget of parsed) {
+        widgets.push({ dashboard: dashboard.name, ...widget });
       }
     }
     return widgets;
   }, [data.dashboards]);
 
-  const selectedDashboard = useMemo(() => data.dashboards.find((row) => row.id === dashboardBuilder.dashboard_id) || null, [data.dashboards, dashboardBuilder.dashboard_id]);
-  const selectedDashboardWidgets = useMemo(() => parseJSONSafe(selectedDashboard?.widgets, []), [selectedDashboard]);
+  const selectedDashboard = useMemo(
+    () => data.dashboards.find((row) => row.id === dashboardBuilder.dashboard_id) || null,
+    [data.dashboards, dashboardBuilder.dashboard_id],
+  );
+  const selectedDashboardWidgets = useMemo(
+    () => parseJSONSafe(selectedDashboard?.widgets, []),
+    [selectedDashboard],
+  );
+  const widgetData = useMemo(() => ({
+    ...data,
+    logs: data.widgetLogs,
+    metrics: data.widgetMetrics,
+    traces: data.widgetTraces,
+    health: data.widgetHealth,
+    logSeverity: data.widgetLogSeverity,
+    metricSeries: data.widgetMetricSeries,
+    traceLatency: data.widgetTraceLatency,
+  }), [data]);
 
   function selectDashboardForEditing(dashboard) {
-    setDashboardBuilder((current) => ({ ...current, dashboard_id: dashboard.id, widget_id: "" }));
+    setDashboardBuilder((current) => ({
+      ...defaultDashboardBuilder(),
+      dashboard_id: dashboard.id,
+      filter_service_id: current.filter_service_id,
+      filter_environment: current.filter_environment,
+      filter_severity: current.filter_severity,
+      filter_metric_name: current.filter_metric_name,
+      filter_search: current.filter_search,
+      filter_trace_id: current.filter_trace_id,
+    }));
     setDashboardForm({
       name: dashboard.name,
       description: dashboard.description,
@@ -708,16 +738,9 @@ export default function DashboardPage({ state, onNotification }) {
   }
 
   function beginEditWidget(widget) {
-    setDashboardBuilder((current) => ({
+    setDashboardBuilder((current) => builderFromDashboardWidget(widget, {
       ...current,
-      widget_id: widget.id || "",
-      title: widget.title || "",
-      type: widget.type || "chart",
-      dataset: widget.dataset || "log_severity",
-      chart_type: widget.chart_type || "bar",
-      metric: widget.metric || "",
-      layout_w: String(widget.layout?.w || 1),
-      layout_h: String(widget.layout?.h || 1),
+      dashboard_id: current.dashboard_id,
     }));
   }
 
@@ -761,6 +784,13 @@ export default function DashboardPage({ state, onNotification }) {
     } catch (error) {
       onNotification(error.message, "error");
     }
+  }
+
+  function resetWidgetEditor() {
+    setDashboardBuilder((current) => ({
+      ...defaultDashboardBuilder(),
+      dashboard_id: current.dashboard_id,
+    }));
   }
 
   if (!token) {
@@ -817,6 +847,10 @@ export default function DashboardPage({ state, onNotification }) {
           <label>
             Search
             <input data-testid="filter-search" value={filterForm.search} onChange={(event) => setFilterForm({ ...filterForm, search: event.target.value })} />
+          </label>
+          <label>
+            Trace ID
+            <input data-testid="filter-trace" value={filterForm.trace_id} onChange={(event) => setFilterForm({ ...filterForm, trace_id: event.target.value })} />
           </label>
           <label>
             Lookback Minutes
@@ -998,7 +1032,7 @@ export default function DashboardPage({ state, onNotification }) {
             </select>
           </label>
           <div className="form-actions">
-            <button type="submit">Create Rule</button>
+            <button data-testid="create-rule" type="submit">Create Rule</button>
           </div>
         </form>
         <DataTable
@@ -1057,124 +1091,20 @@ export default function DashboardPage({ state, onNotification }) {
         />
       </Section>
 
-      <Section title="Incidents">
-        <form className="form-grid" onSubmit={(event) => { event.preventDefault(); loadDashboard(); }}>
-          <label>
-            Status
-            <select value={incidentFilters.status} onChange={(event) => setIncidentFilters({ ...incidentFilters, status: event.target.value })}>
-              <option value="">all</option>
-              <option value="open">open</option>
-              <option value="acknowledged">acknowledged</option>
-              <option value="resolved">resolved</option>
-            </select>
-          </label>
-          <label>
-            Assigned To
-            <input value={incidentFilters.assigned_to} onChange={(event) => setIncidentFilters({ ...incidentFilters, assigned_to: event.target.value })} />
-          </label>
-          <label>
-            Service
-            <select value={incidentFilters.service_id} onChange={(event) => setIncidentFilters({ ...incidentFilters, service_id: event.target.value })}>
-              <option value="">all</option>
-              {data.services.map((service) => (
-                <option key={service.id} value={service.id}>{service.name}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Severity
-            <input value={incidentFilters.severity} onChange={(event) => setIncidentFilters({ ...incidentFilters, severity: event.target.value })} />
-          </label>
-          <div className="form-actions">
-            <button type="submit">Apply Incident Filters</button>
-          </div>
-        </form>
-        <DataTable
-          columns={[
-            { key: "title", label: "Title" },
-            { key: "severity", label: "Severity" },
-            { key: "status", label: "Status" },
-            { key: "assigned_to", label: "Assigned To" },
-            { key: "escalation_level", label: "Escalation" },
-            { key: "observed_value", label: "Observed" },
-            { key: "threshold", label: "Threshold" },
-            { key: "triggered_at", label: "Triggered", render: (row) => formatDate(row.triggered_at) },
-            { key: "resolved_at", label: "Resolved", render: (row) => formatDate(row.resolved_at) },
-            {
-              key: "actions",
-              label: "Actions",
-              render: (row) => (
-                <div className="button-row">
-                  <button onClick={() => handleIncidentAction("ack", row.id)}>Ack</button>
-                  <button onClick={() => handleIncidentAction("resolve", row.id)}>Resolve</button>
-                  <button onClick={() => loadIncidentDetail(row.id)}>Details</button>
-                </div>
-              ),
-            },
-          ]}
-          rows={data.incidents}
-        />
-      </Section>
-
-      <Section title="Incident Details">
-        {data.selectedIncident ? (
-          <div className="key-value-grid">
-            <span>Incident</span><code>{data.selectedIncident.id}</code>
-            <span>Status</span><code>{data.selectedIncident.status}</code>
-            <span>Severity</span><code>{data.selectedIncident.severity || "-"}</code>
-            <span>Assigned</span><code>{data.selectedIncident.assigned_to || "-"}</code>
-            <span>Escalation Count</span><code>{data.selectedIncident.escalation_count ?? 0}</code>
-          </div>
-        ) : (
-          <p>Select an incident to inspect timeline, comments, and deliveries.</p>
-        )}
-        <DataTable
-          columns={[
-            { key: "event_type", label: "Event" },
-            { key: "summary", label: "Summary" },
-            { key: "actor_id", label: "Actor" },
-            { key: "created_at", label: "Created", render: (row) => formatDate(row.created_at) },
-          ]}
-          rows={data.incidentTimeline}
-        />
-      </Section>
-
-      <Section title="Incident Comments">
-        <form className="form-grid" onSubmit={handleAssignIncident}>
-          <label>
-            Incident ID
-            <input data-testid="assign-incident-id" value={assignForm.incidentId} onChange={(event) => setAssignForm({ ...assignForm, incidentId: event.target.value })} />
-          </label>
-          <label>
-            Assign To
-            <input data-testid="assign-incident-user" value={assignForm.assignedTo} onChange={(event) => setAssignForm({ ...assignForm, assignedTo: event.target.value })} />
-          </label>
-          <div className="form-actions">
-            <button data-testid="assign-incident-submit" type="submit">Assign Incident</button>
-          </div>
-        </form>
-        <form className="form-grid" onSubmit={handleAddComment}>
-          <label>
-            Incident ID
-            <input value={commentForm.incidentId} onChange={(event) => setCommentForm({ ...commentForm, incidentId: event.target.value })} />
-          </label>
-          <label>
-            Comment
-            <input value={commentForm.body} onChange={(event) => setCommentForm({ ...commentForm, body: event.target.value })} />
-          </label>
-          <div className="form-actions">
-            <button type="submit">Add Comment</button>
-          </div>
-        </form>
-        <DataTable
-          columns={[
-            { key: "author_id", label: "Author" },
-            { key: "body", label: "Comment" },
-            { key: "created_at", label: "Created", render: (row) => formatDate(row.created_at) },
-          ]}
-          rows={data.incidentComments}
-        />
-      </Section>
+      <IncidentWorkspaceSection
+        data={data}
+        incidentFilters={incidentFilters}
+        setIncidentFilters={setIncidentFilters}
+        assignForm={assignForm}
+        setAssignForm={setAssignForm}
+        commentForm={commentForm}
+        setCommentForm={setCommentForm}
+        onApplyFilters={(event) => { event.preventDefault(); loadDashboard(); }}
+        onIncidentAction={handleIncidentAction}
+        onLoadIncidentDetail={loadIncidentDetail}
+        onAssignIncident={handleAssignIncident}
+        onAddComment={handleAddComment}
+      />
 
       <Section title="Notification Channels">
         <form className="form-grid" onSubmit={handleCreateChannel}>
@@ -1191,7 +1121,7 @@ export default function DashboardPage({ state, onNotification }) {
               <option value="email">email</option>
             </select>
           </label>
-          {channelForm.type === "webhook" || channelForm.type === "slack_webhook" ? (
+          {(channelForm.type === "webhook" || channelForm.type === "slack_webhook") ? (
             <>
               <label>
                 Webhook URL
@@ -1226,7 +1156,7 @@ export default function DashboardPage({ state, onNotification }) {
         />
       </Section>
 
-      <Section title="Notification Deliveries">
+      <Section title="All Notification Deliveries">
         <DataTable
           columns={[
             { key: "event_type", label: "Event" },
@@ -1237,7 +1167,7 @@ export default function DashboardPage({ state, onNotification }) {
             { key: "response", label: "Response" },
             { key: "delivered_at", label: "Delivered", render: (row) => formatDate(row.delivered_at) },
           ]}
-          rows={data.selectedIncident ? data.incidentDeliveries : data.deliveries}
+          rows={data.deliveries}
         />
       </Section>
 
@@ -1414,136 +1344,24 @@ export default function DashboardPage({ state, onNotification }) {
         />
       </Section>
 
-      <Section title="Dashboards">
-        <form className="form-grid" onSubmit={handleCreateDashboard}>
-          <label>
-            Dashboard Name
-            <input data-testid="dashboard-name" value={dashboardForm.name} onChange={(event) => setDashboardForm({ ...dashboardForm, name: event.target.value })} />
-          </label>
-          <label>
-            Description
-            <input data-testid="dashboard-description" value={dashboardForm.description} onChange={(event) => setDashboardForm({ ...dashboardForm, description: event.target.value })} />
-          </label>
-          <label>
-            Default Time Range
-            <select value={dashboardForm.default_time_range} onChange={(event) => setDashboardForm({ ...dashboardForm, default_time_range: event.target.value })}>
-              <option value="30m">30m</option>
-              <option value="120m">120m</option>
-              <option value="24h">24h</option>
-            </select>
-          </label>
-          <div className="form-actions">
-            <button data-testid="create-dashboard" type="submit">Create Dashboard</button>
-          </div>
-          <div className="form-actions">
-            <button type="button" onClick={handleUpdateDashboardDetails}>Update Selected Dashboard</button>
-          </div>
-        </form>
-        <form className="form-grid" onSubmit={handleSaveDashboardWidget}>
-          <label>
-            Dashboard
-            <select data-testid="dashboard-widget-dashboard" value={dashboardBuilder.dashboard_id} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, dashboard_id: event.target.value })}>
-              <option value="">select</option>
-              {data.dashboards.map((dashboard) => (
-                <option key={dashboard.id} value={dashboard.id}>{dashboard.name}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Widget Title
-            <input data-testid="dashboard-widget-title" value={dashboardBuilder.title} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, title: event.target.value })} />
-          </label>
-          <label>
-            Width
-            <input value={dashboardBuilder.layout_w} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, layout_w: event.target.value })} />
-          </label>
-          <label>
-            Height
-            <input value={dashboardBuilder.layout_h} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, layout_h: event.target.value })} />
-          </label>
-          <label>
-            Widget Type
-            <select data-testid="dashboard-widget-type" value={dashboardBuilder.type} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, type: event.target.value })}>
-              <option value="chart">chart</option>
-              <option value="table">table</option>
-              <option value="stat">stat</option>
-            </select>
-          </label>
-          <label>
-            Dataset
-            <select data-testid="dashboard-widget-dataset" value={dashboardBuilder.dataset} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, dataset: event.target.value })}>
-              <option value="log_severity">log_severity</option>
-              <option value="metric_series">metric_series</option>
-              <option value="trace_latency">trace_latency</option>
-              <option value="service_health">service_health</option>
-              <option value="logs">logs</option>
-            </select>
-          </label>
-          <label>
-            Chart Type
-            <select data-testid="dashboard-widget-chart-type" value={dashboardBuilder.chart_type} onChange={(event) => setDashboardBuilder({ ...dashboardBuilder, chart_type: event.target.value })}>
-              <option value="bar">bar</option>
-              <option value="line">line</option>
-            </select>
-          </label>
-          <div className="form-actions">
-            <button data-testid="save-dashboard-widget" type="submit">{dashboardBuilder.widget_id ? "Update Widget" : "Add Widget To Dashboard"}</button>
-          </div>
-        </form>
-        <DataTable
-          columns={[
-            { key: "name", label: "Name" },
-            { key: "description", label: "Description" },
-            { key: "default_time_range", label: "Time Range" },
-            { key: "created_by", label: "Created By" },
-            { key: "edit", label: "Edit", render: (row) => <button onClick={() => selectDashboardForEditing(row)}>Select</button> },
-          ]}
-          rows={data.dashboards}
-        />
-      </Section>
-
-      <Section title="Dashboard Builder Preview">
-        {selectedDashboard ? (
-          <div className="widget-grid">
-            {selectedDashboardWidgets.map((widget, index) => {
-              const rows = widgetDataset(widget, data);
-              return (
-                <div className="widget-card" key={`${widget.title || widget.dataset}-${index}`}>
-                  <h3>{widget.title || widget.dataset || widget.type}</h3>
-                  <div className="button-row">
-                    <button onClick={() => beginEditWidget(widget)}>Edit</button>
-                    <button onClick={() => moveWidget(widget.id, "up")}>Up</button>
-                    <button onClick={() => moveWidget(widget.id, "down")}>Down</button>
-                    <button onClick={() => handleDeleteWidget(widget.id)}>Delete</button>
-                  </div>
-                  {widget.type === "stat" ? (
-                    <StatCard label={widget.metric || widget.title || "value"} value={data.overview?.[widget.metric] ?? rows.length} />
-                  ) : widget.type === "table" ? (
-                    <DataTable columns={Object.keys(rows[0] || {}).slice(0, 4).map((key) => ({ key, label: key }))} rows={rows.slice(0, 5)} />
-                  ) : widget.chart_type === "line" ? (
-                    <LineChart
-                      data={rows.slice(0, 10).map((row) => ({
-                        label: compactTimestamp(row.bucket_start || row.occurred_at || row.last_seen_at),
-                        value: Number(row.average_value || row.average_duration_ms || row.event_count || row.value || 0),
-                      }))}
-                      color="#34d399"
-                    />
-                  ) : (
-                    <BarChart
-                      data={rows.slice(0, 10).map((row) => ({
-                        label: row.severity || row.metric_name || row.service_name || compactTimestamp(row.bucket_start || row.occurred_at),
-                        value: Number(row.event_count || row.average_value || row.average_duration_ms || row.value || 0),
-                      }))}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p>Select a dashboard to preview its widgets.</p>
-        )}
-      </Section>
+      <DashboardBuilderSection
+        data={data}
+        widgetData={widgetData}
+        dashboardForm={dashboardForm}
+        setDashboardForm={setDashboardForm}
+        dashboardBuilder={dashboardBuilder}
+        setDashboardBuilder={setDashboardBuilder}
+        selectedDashboard={selectedDashboard}
+        selectedDashboardWidgets={selectedDashboardWidgets}
+        onCreateDashboard={handleCreateDashboard}
+        onUpdateDashboardDetails={handleUpdateDashboardDetails}
+        onSaveDashboardWidget={handleSaveDashboardWidget}
+        onSelectDashboard={selectDashboardForEditing}
+        onBeginEditWidget={beginEditWidget}
+        onDeleteWidget={handleDeleteWidget}
+        onMoveWidget={moveWidget}
+        onResetWidgetEditor={resetWidgetEditor}
+      />
 
       <Section title="Archive And Replay">
         <div className="key-value-grid">

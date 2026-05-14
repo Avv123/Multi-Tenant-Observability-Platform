@@ -63,16 +63,17 @@ This document describes the repository exactly as implemented and tested.
   - logs, metrics, traces
   - analytics rollups for log severity, metric series, and trace latency
   - platform dependency health and Kafka lag APIs
-  - ClickHouse-first telemetry reads with PostgreSQL fallback
+  - ClickHouse-authoritative telemetry reads with explicit degraded-mode errors
   - ClickHouse-first aggregate reads from rollup tables
   - Redis query caching with tenant-scoped invalidation
+  - signal-aware filter handling so logs, metrics, traces, and rollups do not share one generic filter clause
   - service health summary
   - platform runtime visibility
   - queue backpressure visibility
   - cleanup run visibility
   - saved queries
   - saved dashboards
-  - React UI serving
+  - legacy embedded UI path, while Vite preview on `:3000` remains the authoritative local UI
 - `services/pulselens-alerting-service`
   - alert rule CRUD
   - incident listing
@@ -95,6 +96,8 @@ This document describes the repository exactly as implemented and tested.
   - React + Vite frontend
   - real SVG widgets and charts for log severity, metric trends, trace latency, and dependency health
   - bootstrap, login, ingest playground, analytics rollups, alerts, incidents, assignment, comments, notification channels, replay jobs, audit log, users, service health, saved queries, saved dashboards
+  - dashboard builder with widget create, edit, reorder, delete, preview, and persisted layout/filter state
+  - incident detail workspace with timeline, comments, deliveries, and escalation visibility
   - Playwright browser E2E coverage
 
 ### Packaging
@@ -137,9 +140,11 @@ Beyond the first working cut, the implementation now includes:
 - service heartbeats in Redis with health status projection
 - queue backlog reservation and overload rejection in ingest
 - ClickHouse hot-store schema and mirror writes for telemetry events
-- ClickHouse-first query reads with PostgreSQL fallback safety
+- ClickHouse-authoritative telemetry reads while PostgreSQL remains the compatibility persistence store
+- explicit degraded telemetry responses instead of silent PostgreSQL fallback when ClickHouse is unavailable
 - Redis TTL query caching for logs, metrics, traces, health, and overview counts
 - tenant-scoped cache-version bumps on telemetry writes, cleanup, saved-query writes, and dashboard writes
+- dataset-aware widget filter normalization so saved dashboard widgets and draft previews behave consistently
 - PostgreSQL minute rollups for query-side counts, service-health summaries, log severity, metric series, and trace latency
 - delayed retry scheduling via retry topic plus retry event table
 - tenant-aware retention windows driven from tenant metadata
@@ -157,7 +162,7 @@ Beyond the first working cut, the implementation now includes:
 - React UI instead of static HTML
 - real chart widgets in the UI instead of only tables
 - explicit curl-based verification script in addition to the Python smoke script
-- Playwright browser E2E test for bootstrap, ingest, analytics, user creation, and webhook-channel creation
+- Playwright browser E2E test for bootstrap, ingest, analytics, widget edit/reorder/delete, incident workspace visibility, user creation, and webhook-channel creation
 - concurrent local load-test script for ingest and query paths
 - soak-test script for sustained ingest/query pressure
 - failure-drill script for notification-path failure validation
@@ -366,14 +371,14 @@ Observed live results included:
 - backpressure snapshot visibility
 - cleanup run visibility
 - audit log retrieval
-- React UI served from query-service
+- Vite preview UI served on `http://127.0.0.1:3000`
 
 ## Local Run Order
 
 1. `bash scripts/setup_local_infra.sh`
 2. `cd services/pulselens-ui && npm install && npm run build`
 3. `bash scripts/run_local_services.sh`
-4. open `http://127.0.0.1:8084`
+4. open `http://127.0.0.1:3000`
 5. optionally run `python3 scripts/smoke_test.py`
 6. optionally run `bash scripts/curl_smoke.sh`
 
@@ -381,8 +386,8 @@ Observed live results included:
 
 - telemetry is still mirrored into PostgreSQL as the compatibility store, rather than using ClickHouse-only persistence
 - delayed retry still uses app-managed scheduling instead of broker-native delayed delivery
-- no richer cache invalidation beyond short TTL yet
-- no notification providers beyond webhook and local-recorded delivery
-- no full RBAC matrix beyond tenant-admin flow yet
+- cache invalidation is tenant- and dashboard-scoped, but still not query-shape aware
+- no notification providers beyond webhook-compatible delivery and local MailHog-backed email
+- no full permission matrix or SSO/MFA layer beyond the current tenant roles
 
 These are intentional scope limits for a local-first, zero-recurring-cost version, while keeping the codebase production-shaped.

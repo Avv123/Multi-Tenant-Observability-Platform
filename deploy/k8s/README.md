@@ -10,13 +10,16 @@ This repository now includes three local Kubernetes validation paths:
 Practical workflow:
 
 1. `bash scripts/render_helm.sh`
-2. `bash scripts/k8s_client_dry_run.sh`
+2. `bash scripts/k8s_client_dry_run.sh /tmp/pulselens-helm-rendered.yaml`
 3. `bash scripts/k8s_optional_smoke.sh`
 
 Behavior:
 
 - if `kubectl` is missing, client dry-run exits with a non-failing `skipped` result
+- if `kubectl` exists but has no active cluster context, client dry-run exits with a non-failing `skipped` result
 - if `k3d` is missing, the smoke script exits with a non-failing `skipped` result
 - no tool installation is attempted automatically
+
+This path is packaging validation only. Docker Compose plus the binary-based local launcher remain the authoritative local runtime.
 
 The chart is still app-only. It assumes backing infra already exists.

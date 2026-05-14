@@ -1,9 +1,9 @@
 const BASE_URLS = {
-  tenant: "http://127.0.0.1:8081",
-  ingest: "http://127.0.0.1:8082",
-  query: "http://127.0.0.1:8084",
-  alerting: "http://127.0.0.1:8085",
-  archive: "http://127.0.0.1:8086",
+  tenant: "http://localhost:8081",
+  ingest: "http://localhost:8082",
+  query: "http://localhost:8084",
+  alerting: "http://localhost:8085",
+  archive: "http://localhost:8086",
 };
 
 function buildQueryString(filters = {}) {

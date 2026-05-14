@@ -13,18 +13,19 @@ The full platform should run locally because:
 
 Run locally with:
 
-- `tenant-service`
-- `ingest-service`
-- `processing-service`
-- `query-service`
-- `ui`
+- `pulselens-tenant-service`
+- `pulselens-ingest-service`
+- `pulselens-processing-service`
+- `pulselens-query-service`
+- `pulselens-alerting-service`
+- `pulselens-archive-service`
+- `pulselens-ui` via `vite preview` on `:3000`
 - `Kafka`
-- `Zookeeper` or KRaft mode depending on chosen image
 - `Redis`
 - `ClickHouse`
 - `PostgreSQL`
-- `Prometheus`
-- `Grafana`
+- `MinIO` or compatible object store
+- `MailHog`
 
 ## Local Topology
 
@@ -42,11 +43,16 @@ PROC --> R
 PROC --> S3M[Local object storage or filesystem archive]
 QRY --> CH
 QRY --> R
-PROM[Prometheus] --> ING
-PROM --> PROC
-PROM --> QRY
-GRAF[Grafana] --> PROM
 ```
+
+## Runtime Model
+
+- config files stay on `localhost`
+- runtime normalization happens in client code, not by rewriting config hostnames
+- `scripts/setup_local_infra.sh` prefers repo-owned Redis, ClickHouse, and MinIO
+- `scripts/setup_local_infra.sh` reuses existing local Postgres, Kafka, and MailHog if those ports are already occupied
+- `scripts/run_local_services.sh` builds Go binaries first, then starts services from `bin/`
+- `http://127.0.0.1:3000` is the authoritative local UI path for validation
 
 ## Recommended Local Storage Adjustments
 
@@ -92,7 +98,22 @@ The reviewer should be able to do this:
 6. Search logs by tenant and service
 7. Open a trace by trace ID
 8. View metrics rollups in the UI
-9. Inspect Prometheus/Grafana for internal platform health
+9. Inspect runtime, dependency health, Kafka lag, and cleanup visibility in the UI
+
+## Local Run Order
+
+1. `bash scripts/setup_local_infra.sh`
+2. `cd services/pulselens-ui && npm install && npm run build`
+3. `bash scripts/run_local_services.sh`
+4. Open `http://127.0.0.1:3000`
+5. Optionally run:
+   - `python3 scripts/smoke_test.py`
+   - `bash scripts/curl_smoke.sh`
+   - `python3 scripts/load_test.py`
+   - `python3 scripts/soak_test.py`
+   - `python3 scripts/failure_drill.py`
+   - `python3 scripts/chaos_redis_drill.py`
+   - `python3 scripts/chaos_clickhouse_drill.py`
 
 ## Local Test Layers
 
@@ -122,6 +143,7 @@ For:
 - full ingest to query journey
 - cross-tenant isolation
 - retry and DLQ scenarios
+- browser workflow through Playwright against `:3000`
 
 ## Load Testing Plan
 
@@ -147,4 +169,3 @@ Metrics to capture:
 ## Why This Matters In Review
 
 Interviewers trust real measured behavior more than claims. A local benchmark with a believable setup is far better than a cloud URL with shallow logic.
-

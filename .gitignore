@@ -1,7 +1,9 @@
 bin/
 services/pulselens-ui/dist/
 services/pulselens-ui/node_modules/
+services/pulselens-ui/node_modules/.vite/
 services/pulselens-ui/test-results/
+services/pulselens-ui/playwright-report/
 .cache/
 .swift-cache/
 .tmp/

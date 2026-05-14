@@ -46,7 +46,7 @@ This document maps the implemented system-design concerns to the current codebas
 - after max retry count, events are persisted into `dead_letter_events`
 - alerting evaluation failures are logged without crashing the loop
 - processing cleanup worker continuously removes expired hot-path data and archive metadata
-- query service falls back to PostgreSQL if a ClickHouse read fails
+- query service returns an explicit dependency-unavailable error if ClickHouse is down for telemetry reads
 - notification-path failure is explicitly exercised by the failure-drill script and recorded in delivery state
 
 ### Race Condition Handling
@@ -124,12 +124,13 @@ This document maps the implemented system-design concerns to the current codebas
 
 - ClickHouse is the hot telemetry read store for logs, metrics, traces, and health aggregations
 - processing writes telemetry into PostgreSQL and ClickHouse in the same worker flow
-- query service prefers ClickHouse for telemetry reads and falls back to PostgreSQL on failure
+- query service treats ClickHouse as authoritative for telemetry reads and returns degraded-mode errors if ClickHouse is unavailable
 - ClickHouse materialized views now maintain minute rollups for telemetry counts, service health, log severity, metrics, and trace latency
 - query-side aggregate APIs now read ClickHouse rollup tables first instead of PostgreSQL rollup tables
 - query service caches read-heavy responses in Redis with short TTL to reduce repeated scan cost
 - cache keys include tenant-scoped cache versions, so ingest, cleanup, saved-query writes, and dashboard writes invalidate stale entries without key scans
 - minute rollups in PostgreSQL reduce repeated aggregate scans for overview counts, service-health summaries, log severity, metric series, and trace latency
+- logs, metrics, traces, and analytics rollups now each use signal-aware filter handling instead of one generic filter surface
 
 ### Infra Packaging
 
@@ -137,6 +138,11 @@ This document maps the implemented system-design concerns to the current codebas
 - every service has a container build definition
 - optional Helm assets exist for local Kubernetes experimentation
 - dependency health and Kafka lag are projected into the query/API layer so infra state is observable from the product itself
+- Kubernetes validation stays offline-first:
+  - Helm render
+  - structural manifest sanity checks
+  - optional `kubectl` dry-run when a real context exists
+  - optional `k3d` smoke only when local tools are already installed
 
 ### Retention and Cleanup
 
@@ -150,6 +156,7 @@ This document maps the implemented system-design concerns to the current codebas
 
 - saved queries persist common read filters
 - dashboards persist widget and layout definitions
+- dashboard widgets normalize filters by dataset so preview, saved state, and rendering share the same behavior
 - this moves the UI from transient-only state into reusable stored observability views
 
 ### Role-Based Access Control
@@ -201,7 +208,7 @@ This document maps the implemented system-design concerns to the current codebas
 
 - increase Kafka partition counts
 - move delayed retry orchestration from local scheduler shape to broker-native or queue-native delayed delivery
-- add smarter cache invalidation beyond tenant-scoped versions where finer-grained invalidation becomes necessary
+- add finer-grained cache invalidation beyond the current tenant- and dashboard-scoped versioning
 - add horizontal worker groups for separate signal types
 
 ## Deliberate Non-Goals In This Local Version

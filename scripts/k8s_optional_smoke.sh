@@ -19,6 +19,11 @@ if [[ ! -f "${RENDERED_PATH}" ]]; then
   "${ROOT_DIR}/scripts/render_helm.sh" "${RENDERED_PATH}"
 fi
 
+if ! command -v helm >/dev/null 2>&1; then
+  echo "skipped: helm not installed locally"
+  exit 0
+fi
+
 cleanup() {
   k3d cluster delete "${CLUSTER_NAME}" >/dev/null 2>&1 || true
 }

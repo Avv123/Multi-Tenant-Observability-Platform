@@ -124,7 +124,7 @@ func (r *Repository) listLogsCH(ctx context.Context, tenantID string, filters ob
 		WHERE tenant_id = '%s'%s
 		ORDER BY occurred_at DESC
 		LIMIT %d OFFSET %d
-	`, escapeLiteral(tenantID), telemetryFilterClause(filters, true), filters.Limit, filters.Offset)
+	`, escapeLiteral(tenantID), logFilterClause(filters), filters.Limit, filters.Offset)
 
 	rows, err := platformclickhouse.Select[clickhouseLogRow](ctx, r.ch, query)
 	if err != nil {
@@ -154,7 +154,7 @@ func (r *Repository) listMetricsCH(ctx context.Context, tenantID string, filters
 		WHERE tenant_id = '%s'%s
 		ORDER BY occurred_at DESC
 		LIMIT %d OFFSET %d
-	`, escapeLiteral(tenantID), telemetryFilterClause(filters, false), filters.Limit, filters.Offset)
+	`, escapeLiteral(tenantID), metricFilterClause(filters), filters.Limit, filters.Offset)
 
 	rows, err := platformclickhouse.Select[clickhouseMetricRow](ctx, r.ch, query)
 	if err != nil {
@@ -186,7 +186,7 @@ func (r *Repository) listTracesCH(ctx context.Context, tenantID string, filters 
 		GROUP BY trace_id
 		ORDER BY last_seen_at_ms DESC
 		LIMIT %d OFFSET %d
-	`, escapeLiteral(tenantID), telemetryFilterClause(filters, false), filters.Limit, filters.Offset)
+	`, escapeLiteral(tenantID), traceFilterClause(filters), filters.Limit, filters.Offset)
 
 	rows, err := platformclickhouse.Select[clickhouseTraceRow](ctx, r.ch, query)
 	if err != nil {
@@ -295,7 +295,7 @@ func (r *Repository) listLogSeverityRollupsCH(ctx context.Context, tenantID stri
 		GROUP BY service_id, environment, severity, bucket_start
 		ORDER BY bucket_start DESC, service_name ASC, severity ASC
 		LIMIT %d OFFSET %d
-	`, escapeLiteral(tenantID), bucketFilterClause(filters, true, false, false), filters.Limit, filters.Offset)
+	`, escapeLiteral(tenantID), logRollupFilterClause(filters), filters.Limit, filters.Offset)
 	rows, err := platformclickhouse.Select[clickhouseLogSeverityRollupRow](ctx, r.ch, query)
 	if err != nil {
 		return nil, err
@@ -331,7 +331,7 @@ func (r *Repository) listMetricSeriesCH(ctx context.Context, tenantID string, fi
 		GROUP BY service_id, environment, metric_name, bucket_start
 		ORDER BY bucket_start DESC, metric_name ASC
 		LIMIT %d OFFSET %d
-	`, escapeLiteral(tenantID), bucketFilterClause(filters, false, true, false), filters.Limit, filters.Offset)
+	`, escapeLiteral(tenantID), metricRollupFilterClause(filters), filters.Limit, filters.Offset)
 	rows, err := platformclickhouse.Select[clickhouseMetricRollupRow](ctx, r.ch, query)
 	if err != nil {
 		return nil, err
@@ -374,7 +374,7 @@ func (r *Repository) listTraceLatencyRollupsCH(ctx context.Context, tenantID str
 		GROUP BY service_id, environment, operation, bucket_start
 		ORDER BY bucket_start DESC, service_name ASC, operation ASC
 		LIMIT %d OFFSET %d
-	`, escapeLiteral(tenantID), bucketFilterClause(filters, false, false, true), filters.Limit, filters.Offset)
+	`, escapeLiteral(tenantID), traceRollupFilterClause(filters), filters.Limit, filters.Offset)
 	rows, err := platformclickhouse.Select[clickhouseTraceLatencyRollupRow](ctx, r.ch, query)
 	if err != nil {
 		return nil, err
@@ -408,7 +408,7 @@ func (r *Repository) countFromClickHouse(ctx context.Context, query string) (int
 	return rows[0].Count, nil
 }
 
-func telemetryFilterClause(filters observabilityrequests.Filters, includeLogExtras bool) string {
+func baseTelemetryClauses(filters observabilityrequests.Filters, timeColumn string) []string {
 	clauses := make([]string, 0)
 	if filters.ServiceID != "" {
 		clauses = append(clauses, fmt.Sprintf("service_id = '%s'", escapeLiteral(filters.ServiceID)))
@@ -416,52 +416,67 @@ func telemetryFilterClause(filters observabilityrequests.Filters, includeLogExtr
 	if filters.Environment != "" {
 		clauses = append(clauses, fmt.Sprintf("environment = '%s'", escapeLiteral(filters.Environment)))
 	}
+	if !filters.StartTime.IsZero() {
+		clauses = append(clauses, fmt.Sprintf("%s >= toDateTime64('%s', 3, 'UTC')", timeColumn, filters.StartTime.UTC().Format("2006-01-02 15:04:05.000")))
+	}
+	if !filters.EndTime.IsZero() {
+		clauses = append(clauses, fmt.Sprintf("%s <= toDateTime64('%s', 3, 'UTC')", timeColumn, filters.EndTime.UTC().Format("2006-01-02 15:04:05.000")))
+	}
+	return clauses
+}
+
+func logFilterClause(filters observabilityrequests.Filters) string {
+	clauses := baseTelemetryClauses(filters, "occurred_at")
 	if filters.TraceID != "" {
 		clauses = append(clauses, fmt.Sprintf("trace_id = '%s'", escapeLiteral(filters.TraceID)))
 	}
+	if filters.Severity != "" {
+		clauses = append(clauses, fmt.Sprintf("severity = '%s'", escapeLiteral(filters.Severity)))
+	}
+	if strings.TrimSpace(filters.Search) != "" {
+		clauses = append(clauses, fmt.Sprintf("positionCaseInsensitive(message, '%s') > 0", escapeLiteral(filters.Search)))
+	}
+	return joinClauses(clauses)
+}
+
+func metricFilterClause(filters observabilityrequests.Filters) string {
+	clauses := baseTelemetryClauses(filters, "occurred_at")
 	if filters.MetricName != "" {
 		clauses = append(clauses, fmt.Sprintf("metric_name = '%s'", escapeLiteral(filters.MetricName)))
 	}
-	if !filters.StartTime.IsZero() {
-		clauses = append(clauses, fmt.Sprintf("occurred_at >= toDateTime64('%s', 3, 'UTC')", filters.StartTime.UTC().Format("2006-01-02 15:04:05.000")))
-	}
-	if !filters.EndTime.IsZero() {
-		clauses = append(clauses, fmt.Sprintf("occurred_at <= toDateTime64('%s', 3, 'UTC')", filters.EndTime.UTC().Format("2006-01-02 15:04:05.000")))
-	}
-	if includeLogExtras {
-		if filters.Severity != "" {
-			clauses = append(clauses, fmt.Sprintf("severity = '%s'", escapeLiteral(filters.Severity)))
-		}
-		if strings.TrimSpace(filters.Search) != "" {
-			clauses = append(clauses, fmt.Sprintf("positionCaseInsensitive(message, '%s') > 0", escapeLiteral(filters.Search)))
-		}
-	}
-	if len(clauses) == 0 {
-		return ""
-	}
-	return " AND " + strings.Join(clauses, " AND ")
+	return joinClauses(clauses)
 }
 
-func bucketFilterClause(filters observabilityrequests.Filters, includeSeverity bool, includeMetricName bool, _ bool) string {
-	clauses := make([]string, 0)
-	if filters.ServiceID != "" {
-		clauses = append(clauses, fmt.Sprintf("service_id = '%s'", escapeLiteral(filters.ServiceID)))
+func traceFilterClause(filters observabilityrequests.Filters) string {
+	clauses := baseTelemetryClauses(filters, "occurred_at")
+	if filters.TraceID != "" {
+		clauses = append(clauses, fmt.Sprintf("trace_id = '%s'", escapeLiteral(filters.TraceID)))
 	}
-	if filters.Environment != "" {
-		clauses = append(clauses, fmt.Sprintf("environment = '%s'", escapeLiteral(filters.Environment)))
-	}
-	if includeSeverity && filters.Severity != "" {
+	return joinClauses(clauses)
+}
+
+func logRollupFilterClause(filters observabilityrequests.Filters) string {
+	clauses := baseTelemetryClauses(filters, "bucket_start")
+	if filters.Severity != "" {
 		clauses = append(clauses, fmt.Sprintf("severity = '%s'", escapeLiteral(filters.Severity)))
 	}
-	if includeMetricName && filters.MetricName != "" {
+	return joinClauses(clauses)
+}
+
+func metricRollupFilterClause(filters observabilityrequests.Filters) string {
+	clauses := baseTelemetryClauses(filters, "bucket_start")
+	if filters.MetricName != "" {
 		clauses = append(clauses, fmt.Sprintf("metric_name = '%s'", escapeLiteral(filters.MetricName)))
 	}
-	if !filters.StartTime.IsZero() {
-		clauses = append(clauses, fmt.Sprintf("bucket_start >= toDateTime64('%s', 3, 'UTC')", filters.StartTime.UTC().Truncate(time.Minute).Format("2006-01-02 15:04:05.000")))
-	}
-	if !filters.EndTime.IsZero() {
-		clauses = append(clauses, fmt.Sprintf("bucket_start <= toDateTime64('%s', 3, 'UTC')", filters.EndTime.UTC().Truncate(time.Minute).Format("2006-01-02 15:04:05.000")))
-	}
+	return joinClauses(clauses)
+}
+
+func traceRollupFilterClause(filters observabilityrequests.Filters) string {
+	clauses := baseTelemetryClauses(filters, "bucket_start")
+	return joinClauses(clauses)
+}
+
+func joinClauses(clauses []string) string {
 	if len(clauses) == 0 {
 		return ""
 	}
