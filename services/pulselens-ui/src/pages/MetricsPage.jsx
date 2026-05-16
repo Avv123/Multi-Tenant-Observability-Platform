@@ -65,7 +65,7 @@ export default function MetricsPage({ state, notify }) {
       const v = Math.floor(Math.random()*200)+10;
       await ingestApi.ingest(state.apiKey, [{
         event_type: "metric",
-        payload: { name: "http_requests_total", value: v, unit: "req/s", service: "api-gateway" }
+        payload: { metric_name: "http_requests_total", value: v, unit: "req/s", service_name: "api-gateway", environment: "production" }
       }]);
       notify(`Metric ingested (${v} req/s)`, "success");
       setTimeout(refetch, 1200);

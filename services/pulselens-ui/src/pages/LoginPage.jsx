@@ -155,10 +155,22 @@ export default function LoginPage({ setState, notify }) {
           background:"rgba(99,102,241,0.07)", border:"1px solid rgba(99,102,241,0.18)",
           borderRadius:"var(--r-sm)", fontSize:"0.8rem"
         }}>
-          <div style={{ color:"var(--primary-2)", fontWeight:600, marginBottom:"0.3rem" }}>🔑 Demo Credentials</div>
-          <div style={{ color:"var(--text-2)", fontFamily:"var(--font-mono)", fontSize:"0.75rem" }}>
-            <div>Email: demo@pulselens.io</div>
-            <div>Password: pulselens123</div>
+          <div style={{ color:"var(--primary-2)", fontWeight:600, marginBottom:"0.5rem", borderBottom:"1px solid rgba(99,102,241,0.15)", paddingBottom:"0.3rem" }}>🔑 Demo Credentials</div>
+          
+          <div style={{ marginBottom:"0.75rem" }}>
+            <div style={{ fontSize:"0.65rem", color:"var(--text-3)", textTransform:"uppercase", fontWeight:700, marginBottom:"0.2rem" }}>Tenant Admin</div>
+            <div style={{ color:"var(--text-2)", fontFamily:"var(--font-mono)", fontSize:"0.75rem" }}>
+              <div>Email: demo@pulselens.io</div>
+              <div>Password: pulselens123</div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize:"0.65rem", color:"var(--cyan)", textTransform:"uppercase", fontWeight:700, marginBottom:"0.2rem" }}>Platform Admin</div>
+            <div style={{ color:"var(--text-2)", fontFamily:"var(--font-mono)", fontSize:"0.75rem" }}>
+              <div>Email: admin@pulselens.io</div>
+              <div>Password: admin</div>
+            </div>
           </div>
         </div>
 

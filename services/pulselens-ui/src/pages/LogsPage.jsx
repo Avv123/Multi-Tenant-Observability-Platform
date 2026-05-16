@@ -15,11 +15,19 @@ export default function LogsPage({ state, notify }) {
   const f = (k, v) => setFilters(p => ({ ...p, [k]: v }));
 
   async function sendTestLog() {
+    if (!state.apiKey) {
+      return notify("API Key missing! Please generate an Ingestion key in Settings first.", "error");
+    }
     try {
       await ingestApi.ingest(state.apiKey, [{
         event_type: "log",
-        severity: ["error","warn","info","debug"][Math.floor(Math.random()*4)],
-        payload: { message: `Test event at ${new Date().toISOString()}`, service: "test-client", trace_id: `tr-${Math.random().toString(36).slice(2,10)}` }
+        payload: { 
+          message: `Test event at ${new Date().toISOString()}`, 
+          severity: ["error","warn","info","debug"][Math.floor(Math.random()*4)],
+          service_name: "test-client", 
+          environment: "production",
+          trace_id: `tr-${Math.random().toString(36).slice(2,10)}` 
+        }
       }]);
       notify("Test log ingested", "success");
       setTimeout(refetch, 1200);
@@ -35,11 +43,9 @@ export default function LogsPage({ state, notify }) {
           <p style={{ color:"var(--text-2)", fontSize:"0.875rem" }}>Live stream of ingested log events.</p>
         </div>
         <div style={{ display:"flex", gap:"0.65rem" }}>
-          {state.apiKey && (
-            <button className="btn btn-primary btn-sm" onClick={sendTestLog}>
-              + Test Log
-            </button>
-          )}
+          <button className="btn btn-primary btn-sm" onClick={sendTestLog}>
+            + Test Log
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={refetch}>↺ Refresh</button>
         </div>
       </div>

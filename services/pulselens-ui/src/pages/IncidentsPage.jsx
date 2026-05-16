@@ -1,7 +1,7 @@
 // IncidentsPage — incident management workspace.
 // F1: extracted. F4: per-section loading. F9: empty states.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { EmptyState, ErrorMessage, SectionLoader, useAsyncData } from "../lib/hooks";
 import { alertingApi } from "../lib/api";
 
@@ -11,6 +11,7 @@ export default function IncidentsPage({ state, notify }) {
   const token = state.token;
 
   const [incidentFilters, setIncidentFilters] = useState({ status: "", assigned_to: "", severity: "" });
+  const [viewMode, setViewMode] = useState("list");
   const [selectedId, setSelectedId] = useState("");
   const [commentBody, setCommentBody] = useState("Investigating now.");
   const [assignTo, setAssignTo] = useState("");
@@ -76,6 +77,34 @@ export default function IncidentsPage({ state, notify }) {
     } catch (err) { notify(err.message, "error"); }
   }
 
+  // Grouping logic for New Relic-style Errors Inbox
+  const groupedIncidents = useMemo(() => {
+    if (!incidents) return [];
+    const groups = {};
+    incidents.forEach(inc => {
+      const key = inc.title || inc.summary || "Unknown Incident";
+      if (!groups[key]) {
+        groups[key] = {
+          title: key, count: 0, latest: 0, severity: "warning", status: "resolved", incidents: []
+        };
+      }
+      const g = groups[key];
+      g.count++;
+      g.incidents.push(inc);
+      const time = new Date(inc.triggered_at).getTime();
+      if (time > g.latest) g.latest = time;
+      
+      // Compute worst status
+      if (inc.status === "open") g.status = "open";
+      else if (inc.status === "acknowledged" && g.status !== "open") g.status = "acknowledged";
+      
+      // Compute worst severity
+      if (inc.severity === "critical") g.severity = "critical";
+      else if (inc.severity === "error" && g.severity !== "critical") g.severity = "error";
+    });
+    return Object.values(groups).sort((a,b) => b.latest - a.latest);
+  }, [incidents]);
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
       {error && (
@@ -108,50 +137,84 @@ export default function IncidentsPage({ state, notify }) {
               {["warning","critical","error"].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
+          <div className="form-field">
+            <label>View Mode</label>
+            <div style={{ display: "flex", gap: "0.25rem" }}>
+              <button className={`btn btn-sm ${viewMode === "list" ? "btn-primary" : "btn-secondary"}`} onClick={() => setViewMode("list")}>List</button>
+              <button className={`btn btn-sm ${viewMode === "grouped" ? "btn-primary" : "btn-secondary"}`} onClick={() => setViewMode("grouped")}>Grouped</button>
+            </div>
+          </div>
         </div>
 
         {loading ? <SectionLoader /> : (
           incidents?.length ? (
-            <div className="table-wrap">
-              <table className="data-table" id="table-incidents">
-                <thead>
-                  <tr><th>Triggered</th><th>Title</th><th>Severity</th><th>Status</th><th>Assigned</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                  {incidents.map((inc) => (
-                    <tr
-                      key={inc.id}
-                      onClick={() => setSelectedId(inc.id)}
-                      style={{ cursor:"pointer", background: selectedId === inc.id ? "var(--primary-soft)" : undefined }}
-                    >
-                      <td className="text-muted text-sm">{formatDate(inc.triggered_at)}</td>
-                      <td>{inc.title || inc.summary}</td>
-                      <td>
-                        <span className={`badge ${inc.severity==="critical"||inc.severity==="error" ? "badge-danger" : "badge-warning"}`}>
-                          {inc.severity}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${inc.status==="open" ? "badge-danger" : inc.status==="acknowledged" ? "badge-warning" : "badge-success"}`}>
-                          {inc.status}
-                        </span>
-                      </td>
-                      <td className="text-muted text-sm">{inc.assigned_to || "—"}</td>
-                      <td>
-                        <div className="button-row" onClick={(e) => e.stopPropagation()}>
-                          {inc.status === "open" && (
-                            <button id={`btn-ack-${inc.id}`} className="btn btn-ghost btn-sm" onClick={() => handleAck(inc.id)}>Ack</button>
-                          )}
-                          {inc.status !== "resolved" && (
-                            <button id={`btn-resolve-${inc.id}`} className="btn btn-success btn-sm" onClick={() => handleResolve(inc.id)}>Resolve</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              <div className="table-wrap">
+                {viewMode === "list" ? (
+                  <table className="data-table" id="table-incidents">
+                    <thead>
+                      <tr><th>Triggered</th><th>Title</th><th>Severity</th><th>Status</th><th>Assigned</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                      {incidents.map((inc) => (
+                        <tr
+                          key={inc.id}
+                          onClick={() => setSelectedId(inc.id)}
+                          style={{ cursor:"pointer", background: selectedId === inc.id ? "var(--primary-soft)" : undefined }}
+                        >
+                          <td className="text-muted text-sm">{formatDate(inc.triggered_at)}</td>
+                          <td>{inc.title || inc.summary}</td>
+                          <td>
+                            <span className={`badge ${inc.severity==="critical"||inc.severity==="error" ? "badge-danger" : "badge-warning"}`}>
+                              {inc.severity}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${inc.status==="open" ? "badge-danger" : inc.status==="acknowledged" ? "badge-warning" : "badge-success"}`}>
+                              {inc.status}
+                            </span>
+                          </td>
+                          <td className="text-muted text-sm">{inc.assigned_to || "—"}</td>
+                          <td>
+                            <div className="button-row" onClick={(e) => e.stopPropagation()}>
+                              {inc.status === "open" && (
+                                <button id={`btn-ack-${inc.id}`} className="btn btn-ghost btn-sm" onClick={() => handleAck(inc.id)}>Ack</button>
+                              )}
+                              {inc.status !== "resolved" && (
+                                <button id={`btn-resolve-${inc.id}`} className="btn btn-success btn-sm" onClick={() => handleResolve(inc.id)}>Resolve</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="data-table" id="table-incidents-grouped">
+                    <thead>
+                      <tr><th>Last Seen</th><th>Error Signature / Title</th><th>Occurrences</th><th>Severity</th><th>Group Status</th></tr>
+                    </thead>
+                    <tbody>
+                      {groupedIncidents.map((g) => (
+                        <tr key={g.title} onClick={() => setSelectedId(g.incidents[0].id)} style={{ cursor:"pointer" }}>
+                          <td className="text-muted text-sm">{formatDate(g.latest)}</td>
+                          <td style={{ fontWeight: 600 }}>{g.title}</td>
+                          <td><span className="badge badge-neutral">{g.count} events</span></td>
+                          <td>
+                            <span className={`badge ${g.severity==="critical"||g.severity==="error" ? "badge-danger" : "badge-warning"}`}>
+                              {g.severity}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${g.status==="open" ? "badge-danger" : g.status==="acknowledged" ? "badge-warning" : "badge-success"}`}>
+                              {g.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
           ) : (
             <EmptyState
               icon="⚠"

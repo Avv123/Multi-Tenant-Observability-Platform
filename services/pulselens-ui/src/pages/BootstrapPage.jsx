@@ -47,8 +47,7 @@ export default function BootstrapPage({ setState, notify }) {
         tenantId = tRes?.tenant?.id || tRes?.id;
       } catch (e) {
         if (e.message?.includes("already exists")) {
-          // Tenant/slug collision → try logging in with provided credentials
-          notify("Workspace already exists — attempting login…", "info");
+          return notify(`Workspace slug "${form.slug}" is already taken. Please choose another or login to your existing account.`, "error");
         } else {
           throw e;
         }

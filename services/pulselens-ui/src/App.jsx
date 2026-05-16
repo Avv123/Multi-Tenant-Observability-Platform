@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import "./styles.css";
-import BootstrapPage  from "./pages/BootstrapPage";
-import LoginPage      from "./pages/LoginPage";
-import OverviewPage   from "./pages/OverviewPage";
-import LogsPage       from "./pages/LogsPage";
-import MetricsPage    from "./pages/MetricsPage";
-import TracesPage     from "./pages/TracesPage";
-import AlertsPage     from "./pages/AlertsPage";
-import IncidentsPage  from "./pages/IncidentsPage";
-import ArchivePage    from "./pages/ArchivePage";
-import PlatformPage   from "./pages/PlatformPage";
-import SettingsPage   from "./pages/SettingsPage";
+import BootstrapPage from "./pages/BootstrapPage";
+import LoginPage from "./pages/LoginPage";
+import OverviewPage from "./pages/OverviewPage";
+import LogsPage from "./pages/LogsPage";
+import MetricsPage from "./pages/MetricsPage";
+import TracesPage from "./pages/TracesPage";
+import AlertsPage from "./pages/AlertsPage";
+import IncidentsPage from "./pages/IncidentsPage";
+import ArchivePage from "./pages/ArchivePage";
+import PlatformPage from "./pages/PlatformPage";
+import SettingsPage from "./pages/SettingsPage";
 import { loadState, saveState } from "./lib/storage";
+import AiWidget from "./components/AiWidget";
 
 // Decode JWT payload without a library
 function jwtRole(token) {
@@ -57,15 +58,15 @@ function toastReducer(s, a) {
 
 const PAGE_META = {
   overview: { label: "Overview", icon: Icons.Home },
-  logs:     { label: "Logs", icon: Icons.List },
-  metrics:  { label: "Metrics", icon: Icons.Chart },
-  traces:   { label: "Traces", icon: Icons.Target },
-  alerts:   { label: "Alert Rules", icon: Icons.Bell },
-  incidents:{ label: "Incidents", icon: Icons.Zap },
-  archive:  { label: "Archive", icon: Icons.Archive },
+  logs: { label: "Logs", icon: Icons.List },
+  metrics: { label: "Metrics", icon: Icons.Chart },
+  traces: { label: "Traces", icon: Icons.Target },
+  alerts: { label: "Alert Rules", icon: Icons.Bell },
+  incidents: { label: "Incidents", icon: Icons.Zap },
+  archive: { label: "Archive", icon: Icons.Archive },
   platform: { label: "Platform", icon: Icons.Server },
   settings: { label: "Settings", icon: Icons.Settings },
-  bootstrap:{ label: "Setup Wizard", icon: Icons.Shield },
+  bootstrap: { label: "Setup Wizard", icon: Icons.Shield },
 };
 
 function ToastStack({ toasts, dismiss }) {
@@ -73,7 +74,7 @@ function ToastStack({ toasts, dismiss }) {
     <div className="toast-stack" aria-live="polite">
       {toasts.map(t => (
         <div key={t.id} className={`toast ${t.tone}`} onClick={() => dismiss(t.id)} role="alert">
-          <span style={{flex:1}}>{t.message}</span>
+          <span style={{ flex: 1 }}>{t.message}</span>
         </div>
       ))}
     </div>
@@ -81,38 +82,48 @@ function ToastStack({ toasts, dismiss }) {
 }
 
 function SideNav({ route, navigate, state, onLogout }) {
-  const initials = state.email ? state.email.substring(0,2).toUpperCase() : "PL";
-  
+  const initials = state.email ? state.email.substring(0, 2).toUpperCase() : "PL";
+
   // Decode role from real JWT — fallback to email check for dev convenience
   const role = jwtRole(state.token);
   const isAdmin = role === "super_admin" || role === "platform_admin" || state.email === "admin@pulselens.io";
 
   const adminNav = [
-    { group: "Platform Ops", items: [
-      { path: "platform", label: "Infrastructure" },
-      { path: "overview", label: "Tenant Overview" },
-    ]},
-    { group: "Management", items: [
-      { path: "bootstrap", label: "Onboard Tenant" },
-      { path: "settings",  label: "Settings" },
-    ]},
+    {
+      group: "Platform Ops", items: [
+        { path: "platform", label: "Infrastructure" },
+        { path: "overview", label: "Tenant Overview" },
+      ]
+    },
+    {
+      group: "Management", items: [
+        { path: "bootstrap", label: "Onboard Tenant" },
+        { path: "settings", label: "Settings" },
+      ]
+    },
   ];
 
   const tenantNav = [
-    { group: "Observability", items: [
-      { path: "overview",  label: "Dashboard" },
-      { path: "logs",      label: "Logs Explorer" },
-      { path: "metrics",   label: "Metrics" },
-      { path: "traces",    label: "Distributed Traces" },
-    ]},
-    { group: "Reliability", items: [
-      { path: "incidents", label: "Active Incidents" },
-      { path: "alerts",    label: "Alert Rules" },
-    ]},
-    { group: "Management", items: [
-      { path: "archive",   label: "Data Archive" },
-      { path: "settings",  label: "Settings" },
-    ]}
+    {
+      group: "Observability", items: [
+        { path: "overview", label: "Dashboard" },
+        { path: "logs", label: "Logs Explorer" },
+        { path: "metrics", label: "Metrics" },
+        { path: "traces", label: "Distributed Traces" },
+      ]
+    },
+    {
+      group: "Reliability", items: [
+        { path: "incidents", label: "Active Incidents" },
+        { path: "alerts", label: "Alert Rules" },
+      ]
+    },
+    {
+      group: "Management", items: [
+        { path: "archive", label: "Data Archive" },
+        { path: "settings", label: "Settings" },
+      ]
+    }
   ];
 
   const navToRender = isAdmin ? adminNav : tenantNav;
@@ -121,12 +132,12 @@ function SideNav({ route, navigate, state, onLogout }) {
     <nav className="app-nav">
       <div className="app-nav__brand">
         <div className="brand-icon">PL</div>
-        <span className="brand-name">PulseLens</span>
+        <span className="brand-name">PulseLens</span> 
       </div>
 
       <div className="app-nav__scroll">
         {navToRender.map(({ group, items }) => (
-          <div key={group} style={{marginBottom: "1rem"}}>
+          <div key={group} style={{ marginBottom: "1rem" }}>
             <div className="nav-section-title">{group}</div>
             {items.map(({ path, label }) => {
               const Icon = PAGE_META[path].icon;
@@ -151,13 +162,13 @@ function SideNav({ route, navigate, state, onLogout }) {
           <div className="user-avatar">{initials}</div>
           <div className="user-info">
             <div className="user-name">{state.email || "Not logged in"}</div>
-            <div className="user-role" style={{color: isAdmin ? "var(--cyan)" : "var(--primary-2)"}}>
+            <div className="user-role" style={{ color: isAdmin ? "var(--cyan)" : "var(--primary-2)" }}>
               {isAdmin ? "Platform Admin" : (state.tenantId ? state.tenantId.split("-")[0] : "Tenant")}
             </div>
           </div>
         </div>
         {state.token && (
-          <button className="btn btn-ghost btn-sm" style={{width:"100%",marginTop:"0.5rem",color:"var(--text-3)",fontSize:"0.78rem"}} onClick={onLogout}>
+          <button className="btn btn-ghost btn-sm" style={{ width: "100%", marginTop: "0.5rem", color: "var(--text-3)", fontSize: "0.78rem" }} onClick={onLogout}>
             Sign Out
           </button>
         )}
@@ -169,18 +180,18 @@ function SideNav({ route, navigate, state, onLogout }) {
 function RouteView({ route, state, setState, notify }) {
   const props = { state, setState, notify };
   if (!state.token && route !== "bootstrap") return <LoginPage {...props} />;
-  switch(route) {
-    case "bootstrap":  return <BootstrapPage {...props} />;
-    case "overview":   return <OverviewPage  {...props} />;
-    case "logs":       return <LogsPage      {...props} />;
-    case "metrics":    return <MetricsPage   {...props} />;
-    case "traces":     return <TracesPage    {...props} />;
-    case "alerts":     return <AlertsPage    {...props} />;
-    case "incidents":  return <IncidentsPage {...props} />;
-    case "archive":    return <ArchivePage   {...props} />;
-    case "platform":   return <PlatformPage  {...props} />;
-    case "settings":   return <SettingsPage  {...props} />;
-    default:           return <OverviewPage  {...props} />;
+  switch (route) {
+    case "bootstrap": return <BootstrapPage {...props} />;
+    case "overview": return <OverviewPage  {...props} />;
+    case "logs": return <LogsPage      {...props} />;
+    case "metrics": return <MetricsPage   {...props} />;
+    case "traces": return <TracesPage    {...props} />;
+    case "alerts": return <AlertsPage    {...props} />;
+    case "incidents": return <IncidentsPage {...props} />;
+    case "archive": return <ArchivePage   {...props} />;
+    case "platform": return <PlatformPage  {...props} />;
+    case "settings": return <SettingsPage  {...props} />;
+    default: return <OverviewPage  {...props} />;
   }
 }
 
@@ -191,6 +202,20 @@ export default function App() {
   const timers = useRef({});
 
   useEffect(() => { saveState(state); }, [state]);
+  
+  // Auto-sync API key if missing but we have a session
+  useEffect(() => {
+    if (state.token && state.token !== "bootstrap-session" && !state.apiKey) {
+      tenantApi.listAPIKeys(state.token).then(keys => {
+        const activeIngestKey = keys?.find(k => k.active && (k.scopes.includes("ingest") || k.scopes.includes("*")));
+        if (activeIngestKey) {
+          // Note: we can't get the raw key back for security, but rotation will fix it.
+          // However, for demo/dev, we might need a way to show the key or just prompt to rotate.
+          // For now, we just inform the user if we find keys.
+        }
+      }).catch(() => {});
+    }
+  }, [state.token, state.apiKey]);
 
   const notify = useCallback((message, tone = "info") => {
     const id = ++_tid;
@@ -226,21 +251,21 @@ export default function App() {
   return (
     <div className="app-shell">
       <SideNav route={route} navigate={navigate} state={state} onLogout={handleLogout} />
-      
+
       <div className="app-main">
         <header className="app-topbar">
           <div className="topbar-title">
             <CurrentIcon />
             {PAGE_META[route]?.label || "PulseLens"}
           </div>
-          
-          <div style={{display:"flex",alignItems:"center",gap:"1rem"}}>
-            <div className="form-input" style={{width: "240px", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.75rem"}}>
-              <span style={{width:"16px", height:"16px", display:"flex", color:"var(--text-3)"}}><Icons.Search /></span>
-              <input type="text" placeholder="Search resources..." style={{background:"transparent",border:"none",color:"white",outline:"none",width:"100%", fontSize: "0.85rem"}} />
+
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div className="form-input" style={{ width: "240px", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.75rem" }}>
+              <span style={{ width: "16px", height: "16px", display: "flex", color: "var(--text-3)" }}><Icons.Search /></span>
+              <input type="text" placeholder="Search resources..." style={{ background: "transparent", border: "none", color: "white", outline: "none", width: "100%", fontSize: "0.85rem" }} />
             </div>
-            
-            <button className="btn btn-ghost" onClick={() => navigate("bootstrap")} style={{padding: "0.5rem"}}>
+
+            <button className="btn btn-ghost" onClick={() => navigate("bootstrap")} style={{ padding: "0.5rem" }}>
               <Icons.Shield /> Setup
             </button>
           </div>
@@ -252,6 +277,7 @@ export default function App() {
       </div>
 
       <ToastStack toasts={toasts} dismiss={dismiss} />
+      {state?.token && state.token !== "bootstrap-session" && <AiWidget state={state} />}
     </div>
   );
 }

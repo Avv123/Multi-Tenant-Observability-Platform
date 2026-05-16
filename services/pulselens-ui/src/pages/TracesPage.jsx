@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import LineChart from "../components/LineChart";
+import ServiceMap from "../components/ServiceMap";
 import { EmptyState, SectionLoader, useAsyncData } from "../lib/hooks";
 import { queryApi, ingestApi } from "../lib/api";
 import { buildTraceFilters } from "../lib/queryFilters";
@@ -8,12 +9,14 @@ import { compactTimestamp } from "../lib/widgets";
 function sampleTrace() {
   return [{
     event_type: "trace",
-    trace_id: `trace-${Date.now()}`,
     payload: {
+      trace_id: `trace-${Date.now()}`,
       span_id: "root-span",
       parent_span_id: "",
       operation: "checkout",
       status: "error",
+      service_name: "checkout-service",
+      environment: "production",
       start_time: new Date(Date.now() - 120).toISOString(),
       end_time: new Date().toISOString(),
     },
@@ -53,6 +56,9 @@ export default function TracesPage({ state, notify }) {
   ), [latency]);
 
   async function handleIngest() {
+    if (!state.apiKey) {
+      return notify("API Key missing! Please generate an Ingestion key in Settings first.", "error");
+    }
     try {
       await ingestApi.ingest(state.apiKey, sampleTrace());
       notify("Sample trace ingested.", "success");
@@ -71,11 +77,9 @@ export default function TracesPage({ state, notify }) {
           <p style={{ color:"var(--text-2)", fontSize:"0.875rem" }}>Distributed request flows and spans.</p>
         </div>
         <div style={{ display:"flex", gap:"0.65rem" }}>
-          {state.apiKey && (
-            <button id="btn-ingest-trace" className="btn btn-primary btn-sm" onClick={handleIngest}>
-              + Ingest Sample Trace
-            </button>
-          )}
+          <button id="btn-ingest-trace" className="btn btn-primary btn-sm" onClick={handleIngest}>
+            + Ingest Sample Trace
+          </button>
           <button id="btn-refresh-traces" className="btn btn-secondary btn-sm" onClick={refetch}>↺ Refresh</button>
         </div>
       </div>
@@ -116,7 +120,12 @@ export default function TracesPage({ state, notify }) {
             : <EmptyState icon="⊕" title="No latency data yet" />}
         </div>
 
-        <div className="panel">
+        <div className="panel" style={{ gridColumn: "1 / -1" }}>
+          <div className="panel-title" style={{ marginBottom: "1rem" }}>Service Topology</div>
+          {loading ? <SectionLoader /> : <ServiceMap traces={traces} />}
+        </div>
+
+        <div className="panel" style={{ gridColumn: "1 / -1" }}>
           <div className="panel-title" style={{ marginBottom: "1rem" }}>Recent Spans</div>
           {loading ? <SectionLoader /> : (
             traces?.length ? (
