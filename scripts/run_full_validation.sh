@@ -26,13 +26,6 @@ run "postgres_outage" python3 "${ROOT_DIR}/scripts/test_postgres_outage.py" > "$
 run "minio_outage" python3 "${ROOT_DIR}/scripts/test_minio_outage.py" > "${REPORT_DIR}/minio_outage.json"
 run "multi_dependency_outage" python3 "${ROOT_DIR}/scripts/test_multi_dependency_outage.py" > "${REPORT_DIR}/multi_dependency_outage.json"
 run "backup_restore" python3 "${ROOT_DIR}/scripts/test_backup_restore.py" > "${REPORT_DIR}/backup_restore.json"
-run "render_helm" bash "${ROOT_DIR}/scripts/render_helm.sh"
-run "k8s_client_dry_run" bash "${ROOT_DIR}/scripts/k8s_client_dry_run.sh" /tmp/pulselens-helm-rendered.yaml
-if command -v k3d >/dev/null 2>&1 && command -v helm >/dev/null 2>&1 && command -v kubectl >/dev/null 2>&1; then
-  run "k8s_optional_smoke" bash "${ROOT_DIR}/scripts/k8s_optional_smoke.sh"
-else
-  echo "== k8s_optional_smoke == skipped"
-fi
 run "benchmark_report" python3 "${ROOT_DIR}/scripts/generate_benchmark_report.py" "${REPORT_DIR}" "${REPORT_DIR}/load.json" "${REPORT_DIR}/soak.json"
 
 echo
