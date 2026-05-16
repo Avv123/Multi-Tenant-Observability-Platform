@@ -9,7 +9,7 @@ PulseLens is a multi-tenant observability platform built to handle logs, metrics
 - ClickHouse-backed telemetry reads and rollups
 - tenant-safe querying and dashboard workflows
 - alerting, incidents, delivery tracking, and archive/replay
-- local production-style runtime hardening with backup, restore, and chaos drills
+- Production-grade reliability features including automated backup, restore, and chaos engineering drills.
 
 ## Project Constraints
 
@@ -22,4 +22,3 @@ PulseLens is a multi-tenant observability platform built to handle logs, metrics
 - project overview and quick start: `README.md`
 - local runtime and testing: `docs/06-local-development/README.md`
 - implemented features inventory: `docs/08-implemented-system/README.md`
-- architecture rationale: `docs/09-system-design/README.md`

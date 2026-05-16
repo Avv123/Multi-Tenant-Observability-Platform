@@ -75,9 +75,6 @@ Use `bash scripts/local_status.sh` to inspect service health, readiness, depende
 ## Related Runbooks
 
 - implementation inventory: `docs/08-implemented-system/README.md`
-- architecture rationale: `docs/09-system-design/README.md`
-- local SLOs: `docs/10-local-slos/README.md`
 - backup and restore: `docs/11-backup-restore/README.md`
 - chaos drills: `docs/12-chaos-drills/README.md`
 - security operations: `docs/13-security-operations/README.md`
-- packaging validation: `deploy/k8s/README.md`

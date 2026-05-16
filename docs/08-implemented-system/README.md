@@ -105,13 +105,12 @@ This document describes the repository exactly as implemented and tested.
 - root `docker-compose.yml`
 - per-service `Dockerfile`
 - docker-specific config files under every service `configs/docker.yaml`
-- optional Helm chart under `deploy/helm/pulselens`
 - Compose-owned UI service on `:3000`
 - `/ready` healthchecks for app services in Compose
 
 ## Package Layout Standard
 
-The Go services now follow the structure you asked for:
+The Go services follow a standardized clean architecture structure:
 
 - `main.go`
 - `configs/`
@@ -129,7 +128,7 @@ The Go services now follow the structure you asked for:
 
 That removes the earlier flat `internal` layout and keeps request, response, model, repository, and service code separated for readability.
 
-## Production Features Added
+## Core Platform Features
 
 Beyond the first working cut, the implementation now includes:
 
@@ -168,10 +167,7 @@ Beyond the first working cut, the implementation now includes:
 - concurrent local load-test script for ingest and query paths
 - soak-test script for sustained ingest/query pressure
 - failure-drill script for notification-path failure validation
-- docker-compose packaging for a repo-owned runtime
-- Compose-only local runtime with explicit port-conflict preflight
 - Compose-owned backup, restore, and chaos scripts
-- optional Helm assets for local Kubernetes experimentation
 
 ## End-to-End Data Flow
 
@@ -394,9 +390,9 @@ Observed live results included:
 - no notification providers beyond webhook-compatible delivery and local MailHog-backed email
 - no full permission matrix or SSO/MFA layer beyond the current tenant roles
 
-These are intentional scope limits for a local-first, zero-recurring-cost version, while keeping the codebase production-shaped.
+These are intentional architectural choices that prioritize a balance between high-performance execution and scalability in professional environments, while maintaining a clean and extensible codebase.
 
-## Local Production Hardening Additions
+## Reliability & Resilience
 
 - `/ready` endpoints and startup preflight checks across backend services
 - backup and restore scripts for Postgres, ClickHouse, and MinIO

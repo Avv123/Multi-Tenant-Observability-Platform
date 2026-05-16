@@ -1,7 +1,7 @@
 # PulseLens 🛡️
-**Local-First, Multi-Tenant Observability Platform**
+**Enterprise-Grade, Multi-Tenant Observability Platform**
 
-PulseLens is a comprehensive observability suite designed for local development and high-performance telemetry processing. It provides a unified experience for **Logs, Metrics, and Traces**, with built-in support for multi-tenancy, alerting, and automated data archiving.
+PulseLens is a comprehensive observability suite designed for high-performance telemetry processing and seamless multi-tenant operations. It provides a unified experience for **Logs, Metrics, and Traces**, with built-in support for alerting, and automated data archiving.
 
 ---
 
@@ -71,6 +71,5 @@ The repository includes production-grade validation flows to ensure platform rel
 - [Overview](docs/01-overview/README.md)
 - [System Architecture](docs/02-system-architecture/README.md)
 - [Local Development](docs/06-local-development/README.md)
-- [System Design Notes](docs/09-system-design/README.md)
 - [Backup & Restore Guide](docs/11-backup-restore/README.md)
 - [Chaos Drill Runbooks](docs/12-chaos-drills/README.md)

@@ -45,4 +45,7 @@ test-results/
 coverage/
 
 # Misc
-LOCAL_OPERATOR_GUIDE.md
+# Internal Documentation
+docs/03-implementation-style/
+docs/09-system-design/
+docs/10-local-slos/
