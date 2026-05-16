@@ -20,7 +20,7 @@ type ConsumerGroupLagRow struct {
 
 func Ping(_ context.Context, brokers []string) error {
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = sarama.V2_1_0_0
 	client, err := sarama.NewClient(netutil.NormalizeHosts(brokers), config)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func Ping(_ context.Context, brokers []string) error {
 
 func ConsumerGroupLag(brokers []string, groupID string, topics []string) ([]ConsumerGroupLagRow, error) {
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = sarama.V2_1_0_0
 
 	client, err := sarama.NewClient(netutil.NormalizeHosts(brokers), config)
 	if err != nil {

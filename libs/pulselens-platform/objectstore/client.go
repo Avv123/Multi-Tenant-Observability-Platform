@@ -95,7 +95,14 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	var notFound *types.NotFound
 	if errors.As(err, &notFound) || strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(strings.ToLower(err.Error()), "404") {
 		_, createErr := c.client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(c.bucket)})
-		return createErr
+		if createErr != nil {
+			var alreadyOwned *types.BucketAlreadyOwnedByYou
+			if errors.As(createErr, &alreadyOwned) || strings.Contains(strings.ToLower(createErr.Error()), "alreadyownedbyyou") {
+				return nil
+			}
+			return createErr
+		}
+		return nil
 	}
 	if strings.Contains(strings.ToLower(err.Error()), "status code: 301") {
 		return nil

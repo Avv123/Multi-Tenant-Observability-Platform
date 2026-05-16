@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/omniful/pulselens-platform/config"
 	"github.com/omniful/pulselens-platform/idgen"
 	platformkafka "github.com/omniful/pulselens-platform/kafka"
+	"github.com/omniful/pulselens-platform/lock"
+	"github.com/omniful/pulselens-platform/logging"
 	"github.com/omniful/pulselens-processing-service/internal/telemetry/models"
 	"github.com/omniful/pulselens-processing-service/internal/telemetry/repositories"
 	"github.com/omniful/pulselens-processing-service/pkg/archive"
@@ -85,7 +88,15 @@ func (s *Service) HandleMessage(ctx context.Context, message *sarama.ConsumerMes
 	_ = cache.Get().Set(ctx, dedupeKey(envelope.TenantID, envelope.EventID), "done", 24*time.Hour).Err()
 	s.releasePending(ctx, envelope.EventType)
 	_ = s.repository.IncrementUsage(ctx, envelope.TenantID, envelope.ServiceID, string(envelope.EventType))
-	_ = s.archiveEnvelope(ctx, envelope)
+	// B2: archive write is decoupled from the Kafka consumer goroutine.
+	// A slow or unavailable MinIO will no longer stall processing throughput.
+	go func(env pulsetelemetry.Envelope) {
+		archCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if archErr := s.archiveEnvelope(archCtx, env); archErr != nil {
+			logging.Errorf("archive write failed tenant=%s event=%s err=%v", env.TenantID, env.EventID, archErr)
+		}
+	}(envelope)
 	bumpTelemetryScopes(ctx, envelope)
 	return nil
 }
@@ -224,7 +235,14 @@ func (s *Service) ScheduleRetryEvent(ctx context.Context, envelope pulsetelemetr
 	})
 }
 
+// B3: DispatchRetryEvents now holds a Redis distributed lock so that if two
+// processing-service instances run simultaneously (e.g. during a rolling restart)
+// they do not double-dispatch the same retry events.
 func (s *Service) DispatchRetryEvents(ctx context.Context) error {
+	redisLock := lock.NewRedisLock(cache.Get())
+	lockKey := "lock:retry-dispatcher"
+	lockOwner := idgen.New("dispatcher")
+
 	interval := time.Duration(config.GetInt("replay.pollSeconds")) * time.Second
 	if interval <= 0 {
 		interval = 3 * time.Second
@@ -233,8 +251,12 @@ func (s *Service) DispatchRetryEvents(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := s.dispatchDueRetryEvents(ctx); err != nil {
-			return err
+		acquired, lockErr := redisLock.Acquire(ctx, lockKey, lockOwner, interval*3)
+		if lockErr == nil && acquired {
+			if dispatchErr := s.dispatchDueRetryEvents(ctx); dispatchErr != nil {
+				logging.Errorf("retry dispatch error: %v", dispatchErr)
+			}
+			_, _ = redisLock.ReleaseOwner(ctx, lockKey, lockOwner)
 		}
 
 		select {
@@ -311,6 +333,10 @@ func retryTargetTopic(eventType pulsetelemetry.EventType) string {
 	}
 }
 
+// nextRetryDelay computes exponential backoff with ±25% jitter.
+// B8: without jitter a mass failure event schedules thousands of retries at the
+// exact same timestamp, creating a thundering herd on recovery. Jitter spreads
+// them across a window so the system recovers gracefully.
 func nextRetryDelay(retryCount int) time.Duration {
 	base := time.Duration(config.GetInt("retry.baseDelaySeconds")) * time.Second
 	if base <= 0 {
@@ -318,7 +344,14 @@ func nextRetryDelay(retryCount int) time.Duration {
 	}
 	delay := base * time.Duration(1<<(retryCount-1))
 	if delay > 10*time.Minute {
-		return 10 * time.Minute
+		delay = 10 * time.Minute
+	}
+	// Add ±25% jitter: randomise within [0.75*delay, 1.25*delay].
+	jitter := time.Duration(rand.Int63n(int64(delay / 2)))
+	if rand.Intn(2) == 0 {
+		delay -= jitter / 2
+	} else {
+		delay += jitter / 2
 	}
 	return delay
 }

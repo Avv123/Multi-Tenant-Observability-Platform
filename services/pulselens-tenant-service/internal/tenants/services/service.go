@@ -204,7 +204,14 @@ func (s *Service) ListAPIKeysForClaims(ctx context.Context, tenantID string) ([]
 }
 
 func (s *Service) ResolveAPIKey(ctx context.Context, rawKey string) (pulsetenant.ResolvedAPIKey, errs.CustomError) {
-	keyModel, err := s.repository.GetAPIKeyByHash(ctx, hashAPIKey(rawKey))
+	keyHash := hashAPIKey(rawKey)
+
+	// B1: read-through Redis cache — avoids 3 sequential DB calls on every ingest request.
+	if cached, ok := getResolvedFromCache(ctx, keyHash); ok {
+		return cached, errs.CustomError{}
+	}
+
+	keyModel, err := s.repository.GetAPIKeyByHash(ctx, keyHash)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return pulsetenant.ResolvedAPIKey{}, errs.New(tenanterror.Unauthorized, "invalid api key")
@@ -222,12 +229,13 @@ func (s *Service) ResolveAPIKey(ctx context.Context, rawKey string) (pulsetenant
 		return pulsetenant.ResolvedAPIKey{}, mapDBError(err)
 	}
 
-	_ = s.repository.TouchAPIKey(ctx, keyModel.ID)
+	// B13: fire last_used_at update in background — never blocks the hot path.
+	touchAPIKeyAsync(nil, s.repository, keyModel.ID)
 
 	scopes := make([]pulsetenant.APIKeyScope, 0)
 	_ = json.Unmarshal([]byte(keyModel.Scopes), &scopes)
 
-	return pulsetenant.ResolvedAPIKey{
+	resolved := pulsetenant.ResolvedAPIKey{
 		KeyID:       keyModel.ID,
 		TenantID:    tenantModel.ID,
 		TenantName:  tenantModel.Name,
@@ -238,7 +246,11 @@ func (s *Service) ResolveAPIKey(ctx context.Context, rawKey string) (pulsetenant
 		Environment: serviceModel.Environment,
 		Scopes:      scopes,
 		Active:      keyModel.Active,
-	}, errs.CustomError{}
+	}
+
+	// Populate cache for subsequent requests within the TTL window.
+	setResolvedInCache(ctx, keyHash, resolved)
+	return resolved, errs.CustomError{}
 }
 
 func (s *Service) RotateAPIKey(ctx context.Context, actorUserID string, tenantID string, keyID string, name string) (tenantresponses.CreateAPIKeyResponse, errs.CustomError) {
@@ -289,6 +301,8 @@ func (s *Service) RotateAPIKey(ctx context.Context, actorUserID string, tenantID
 	if err = s.repository.RotateAPIKey(ctx, &keyModel, &replacement, auditLog); err != nil {
 		return tenantresponses.CreateAPIKeyResponse{}, mapDBError(err)
 	}
+	// B1: invalidate the old key's cache entry immediately on rotation.
+	invalidateResolvedCache(ctx, keyModel.KeyHash)
 	return tenantresponses.CreateAPIKeyResponse{
 		ID:        replacement.ID,
 		TenantID:  replacement.TenantID,
@@ -327,6 +341,8 @@ func (s *Service) RevokeAPIKey(ctx context.Context, actorUserID string, tenantID
 	if err = s.repository.RevokeAPIKey(ctx, keyModel.ID, auditLog); err != nil {
 		return mapDBError(err)
 	}
+	// B1: explicitly invalidate the cache so the revoked key is never served again.
+	invalidateResolvedCache(ctx, keyModel.KeyHash)
 	return errs.CustomError{}
 }
 
@@ -429,11 +445,18 @@ func marshalJSON(payload interface{}) string {
 	return string(bytes)
 }
 
+// B7: explicit actor type constants — distinguishes system bootstrap, api_key
+// operations, and user-driven actions for forensic audit log analysis.
+const (
+	ActorTypeUser    = "user"
+	ActorTypeInternal = "internal"
+)
+
 func actorType(actorUserID string) string {
-	if actorUserID == "" {
-		return "internal"
+	if strings.TrimSpace(actorUserID) == "" {
+		return ActorTypeInternal
 	}
-	return "user"
+	return ActorTypeUser
 }
 
 func firstNonEmpty(values ...string) string {
@@ -446,12 +469,14 @@ func firstNonEmpty(values ...string) string {
 }
 
 func mapDBError(err error) errs.CustomError {
+	// B11: log internal error detail but return an opaque code to callers
+	// so raw SQL/constraint names are never exposed in API responses.
 	logging.Errorf("tenant-service db error: %v", err)
 	lowered := strings.ToLower(err.Error())
 	if strings.Contains(lowered, "duplicate") || strings.Contains(lowered, "unique") {
-		return errs.New(tenanterror.Conflict, err.Error())
+		return errs.New(tenanterror.Conflict, "resource already exists")
 	}
-	return errs.New(tenanterror.InternalServer, err.Error())
+	return errs.New(tenanterror.InternalServer, "an internal error occurred")
 }
 
 func generateAPIKey() (string, error) {

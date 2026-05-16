@@ -14,7 +14,7 @@ type Producer struct {
 
 func NewProducer(brokers []string) (*Producer, error) {
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = sarama.V2_1_0_0
 	config.Producer.Return.Successes = true
 
 	client, err := sarama.NewSyncProducer(netutil.NormalizeHosts(brokers), config)
@@ -72,7 +72,7 @@ func (c *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 func ConsumeGroup(ctx context.Context, brokers []string, groupID string, topics []string, handler MessageHandler) error {
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = sarama.V2_1_0_0
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 

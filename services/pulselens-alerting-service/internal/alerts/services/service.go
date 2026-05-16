@@ -469,17 +469,42 @@ func (s *Service) EvaluateRule(ctx context.Context, rule alertmodels.AlertRule) 
 	}, nil
 }
 
+// EvaluateAll evaluates every active alert rule concurrently.
+// B12: a bounded goroutine pool (semaphore size 10) ensures that a slow rule or
+// a slow DB call does not starve the evaluation of every other rule in the tick.
 func (s *Service) EvaluateAll(ctx context.Context) error {
 	rules, err := s.repository.ListActiveRules(ctx)
 	if err != nil {
 		return err
 	}
-	for _, rule := range rules {
-		if _, evalErr := s.EvaluateRule(ctx, rule); evalErr != nil {
-			logging.Errorf("failed to evaluate rule=%s err=%v", rule.ID, evalErr)
+
+	const concurrency = 10
+	sem := make(chan struct{}, concurrency)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for _, rule := range rules {
+			sem <- struct{}{}
+			go func(r alertmodels.AlertRule) {
+				defer func() { <-sem }()
+				if _, evalErr := s.EvaluateRule(ctx, r); evalErr != nil {
+					logging.Errorf("failed to evaluate rule=%s err=%v", r.ID, evalErr)
+				}
+			}(rule)
 		}
+		// drain the semaphore to wait for all goroutines
+		for i := 0; i < concurrency; i++ {
+			sem <- struct{}{}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-done:
+		return nil
 	}
-	return nil
 }
 
 func (s *Service) EvaluateEscalations(ctx context.Context) error {

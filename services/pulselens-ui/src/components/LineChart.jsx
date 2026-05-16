@@ -1,39 +1,35 @@
-export default function LineChart({ data, valueKey = "value", labelKey = "label", color = "#38bdf8", height = 180 }) {
-  if (!data?.length) {
-    return <div className="chart-empty">No data</div>;
-  }
-
-  const width = 520;
-  const padding = 24;
-  const values = data.map((item) => Number(item[valueKey]) || 0);
-  const maxValue = Math.max(...values, 1);
-  const stepX = data.length === 1 ? 0 : (width - padding * 2) / (data.length - 1);
-  const points = data.map((item, index) => {
-    const x = padding + index * stepX;
-    const ratio = (Number(item[valueKey]) || 0) / maxValue;
-    const y = height - padding - ratio * (height - padding * 2);
-    return { x, y, value: Number(item[valueKey]) || 0, label: item[labelKey] };
-  });
-  const path = points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`).join(" ");
-
+export default function LineChart({ data = [], color = "var(--primary-2)" }) {
+  if (!data.length) return <p style={{color:"var(--text-3)",fontSize:".82rem"}}>No data</p>;
+  const W=400, H=90;
+  const max = Math.max(...data.map(d=>d.value),1);
+  const min = Math.min(...data.map(d=>d.value),0);
+  const range = max-min||1;
+  const tx = i => (i/(data.length-1||1))*W;
+  const ty = v => H - ((v-min)/range)*(H-10) - 5;
+  const pts = data.map((d,i) => `${tx(i)},${ty(d.value)}`).join(" ");
+  const id = `lg${Math.random().toString(36).slice(2,8)}`;
   return (
-    <div className="chart-shell">
-      <svg viewBox={`0 0 ${width} ${height}`} className="chart-svg" role="img" aria-label="line chart">
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#334155" strokeWidth="1" />
-        <path d={path} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((point) => (
-          <g key={`${point.label}-${point.x}`}>
-            <circle cx={point.x} cy={point.y} r="4" fill={color} />
-            <title>{`${point.label}: ${point.value}`}</title>
-          </g>
+    <div className="chart-wrap">
+      <svg className="chart-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon points={`0,${H} ${pts} ${W},${H}`} fill={`url(#${id})`}/>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5"
+          strokeLinejoin="round" strokeLinecap="round"/>
+        {data.map((d,i) => (
+          <circle key={i} cx={tx(i)} cy={ty(d.value)} r={4}
+            fill={color} stroke="var(--bg)" strokeWidth="2" className="chart-bar">
+            <title>{`${d.label}: ${d.value}`}</title>
+          </circle>
         ))}
       </svg>
-      <div className="chart-label-row">
-        {data.map((item) => (
-          <span key={`${item[labelKey]}`}>{item[labelKey]}</span>
-        ))}
+      <div className="chart-labels" style={{gridTemplateColumns:`repeat(${data.length},1fr)`}}>
+        {data.map((d,i) => <span key={i} className="truncate" title={d.label}>{d.label}</span>)}
       </div>
     </div>
   );
 }
-

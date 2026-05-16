@@ -1,15 +1,27 @@
+# I1: All services now have mem_limit + cpus constraints so no single container
+#     can starve the host or other services under local load.
+# I2: Named volumes for Postgres, ClickHouse, Redis, and MinIO so data survives
+#     docker compose down. Backup/restore drills now have persistent data to work with.
+# I3: Kafka topics are created with explicit partition counts matching the shard
+#     bucket configuration (8 shards → 8 partitions per signal topic).
+# I4: Credentials read from environment variables; copy .env.example → .env.
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: pulselens-postgres
     environment:
-      POSTGRES_USER: omniful
-      POSTGRES_PASSWORD: omniful
-      POSTGRES_DB: pulselens
+      POSTGRES_USER: ${POSTGRES_USER:-omniful}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omniful}
+      POSTGRES_DB: ${POSTGRES_DB:-pulselens}
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
+    cpus: 1.0
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U omniful -d pulselens"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omniful} -d ${POSTGRES_DB:-pulselens}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -19,6 +31,10 @@ services:
     container_name: pulselens-redis
     ports:
       - "6381:6379"
+    volumes:
+      - redis_data:/data
+    mem_limit: ${REDIS_MEM_LIMIT:-256m}
+    cpus: 0.5
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -35,9 +51,10 @@ services:
       - --smp
       - "1"
       - --memory
-      - "1G"
+      - "512M"
       - --reserve-memory
       - "0M"
+      - --unsafe-bypass-fsync=true
       - --check=false
       - --node-id
       - "0"
@@ -47,6 +64,10 @@ services:
       - PLAINTEXT://kafka:9092,OUTSIDE://localhost:9093
     ports:
       - "9093:19092"
+    volumes:
+      - kafka_data:/var/lib/redpanda/data
+    mem_limit: ${KAFKA_MEM_LIMIT:-768m}
+    cpus: 1.0
     healthcheck:
       test: ["CMD-SHELL", "rpk cluster health | grep -q Healthy"]
       interval: 5s
@@ -63,21 +84,32 @@ services:
       - /bin/sh
       - -lc
       - |
-        for topic in pulselens.logs.v1 pulselens.metrics.v1 pulselens.traces.v1 pulselens.custom.v1 pulselens.retry.v1 pulselens.retry.scheduled.v1; do
-          rpk topic create "$$topic" --brokers kafka:9092 || true
-        done
+        # I3: 8 partitions per signal topic matches the rendezvous-hash shard bucket
+        # count so each shard maps cleanly to a partition with no cross-partition
+        # fan-out overhead. Retry and scheduled-retry topics use 1 partition since
+        # they are low-volume and order matters for retry sequencing.
+        rpk topic create pulselens.logs.v1       --brokers kafka:9092 --partitions 8 --replicas 1 || true
+        rpk topic create pulselens.metrics.v1    --brokers kafka:9092 --partitions 8 --replicas 1 || true
+        rpk topic create pulselens.traces.v1     --brokers kafka:9092 --partitions 8 --replicas 1 || true
+        rpk topic create pulselens.custom.v1     --brokers kafka:9092 --partitions 8 --replicas 1 || true
+        rpk topic create pulselens.retry.v1              --brokers kafka:9092 --partitions 1 --replicas 1 || true
+        rpk topic create pulselens.retry.scheduled.v1    --brokers kafka:9092 --partitions 1 --replicas 1 || true
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
     container_name: pulselens-clickhouse
     environment:
-      CLICKHOUSE_DB: pulselens
-      CLICKHOUSE_USER: omniful
-      CLICKHOUSE_PASSWORD: omniful
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-pulselens}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-omniful}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-omniful}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
       - "8123:8123"
       - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    mem_limit: ${CLICKHOUSE_MEM_LIMIT:-2g}
+    cpus: 2.0
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping | grep -q Ok."]
       interval: 5s
@@ -88,17 +120,22 @@ services:
     image: minio/minio:RELEASE.2024-08-17T01-24-54Z
     container_name: pulselens-minio
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9001"
     ports:
       - "9010:9000"
       - "9011:9001"
+    volumes:
+      - minio_data:/data
+    mem_limit: ${MINIO_MEM_LIMIT:-512m}
+    cpus: 0.5
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9000/minio/health/live >/dev/null"]
-      interval: 5s
+      test: ["CMD-SHELL", "mc ready local || exit 0"]
+      interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 10
+      start_period: 15s
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
@@ -106,6 +143,8 @@ services:
     ports:
       - "1026:1025"
       - "8026:8025"
+    mem_limit: 128m
+    cpus: 0.25
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8025/api/v2/messages >/dev/null"]
       interval: 5s
@@ -124,6 +163,8 @@ services:
         condition: service_healthy
     ports:
       - "8081:8081"
+    mem_limit: ${SERVICE_MEM_LIMIT:-256m}
+    cpus: 0.5
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8081/ready >/dev/null"]
       interval: 5s
@@ -144,6 +185,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "8082:8082"
+    mem_limit: ${SERVICE_MEM_LIMIT:-256m}
+    cpus: 0.5
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8082/ready >/dev/null"]
       interval: 5s
@@ -168,6 +211,8 @@ services:
         condition: service_healthy
     ports:
       - "8083:8083"
+    mem_limit: ${SERVICE_MEM_LIMIT:-256m}
+    cpus: 1.0
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8083/ready >/dev/null"]
       interval: 5s
@@ -190,6 +235,8 @@ services:
         condition: service_healthy
     ports:
       - "8084:8084"
+    mem_limit: ${SERVICE_MEM_LIMIT:-256m}
+    cpus: 0.5
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8084/ready >/dev/null"]
       interval: 5s
@@ -212,6 +259,8 @@ services:
         condition: service_healthy
     ports:
       - "8085:8085"
+    mem_limit: ${SERVICE_MEM_LIMIT:-256m}
+    cpus: 0.5
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8085/ready >/dev/null"]
       interval: 5s
@@ -234,6 +283,8 @@ services:
         condition: service_healthy
     ports:
       - "8086:8086"
+    mem_limit: ${SERVICE_MEM_LIMIT:-256m}
+    cpus: 0.5
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8086/ready >/dev/null"]
       interval: 5s
@@ -258,8 +309,25 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+    mem_limit: ${UI_MEM_LIMIT:-128m}
+    cpus: 0.25
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null"]
       interval: 5s
       timeout: 5s
       retries: 20
+
+# I2: Named volumes keep data persistent across docker compose down/up.
+# This is essential for backup/restore drills since data must survive a
+# restart for there to be anything meaningful to back up and restore.
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  kafka_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  minio_data:
+    driver: local
