@@ -44,8 +44,9 @@ playwright-report/
 test-results/
 coverage/
 
-# Misc
-# Internal Documentation
-docs/03-implementation-style/
-docs/09-system-design/
-docs/10-local-slos/
+# Documentation (public: overview + system architecture only)
+docs/*
+!docs/01-overview/
+!docs/01-overview/**
+!docs/02-system-architecture/
+!docs/02-system-architecture/**
