@@ -70,6 +70,3 @@ The repository includes production-grade validation flows to ensure platform rel
 ### 📂 Documentation
 - [Overview](docs/01-overview/README.md)
 - [System Architecture](docs/02-system-architecture/README.md)
-- [Local Development](docs/06-local-development/README.md)
-- [Backup & Restore Guide](docs/11-backup-restore/README.md)
-- [Chaos Drill Runbooks](docs/12-chaos-drills/README.md)
