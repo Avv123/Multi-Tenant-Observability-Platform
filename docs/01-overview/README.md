@@ -20,5 +20,4 @@ PulseLens is a multi-tenant observability platform built to handle logs, metrics
 ## What To Read Next
 
 - project overview and quick start: `README.md`
-- local runtime and testing: `docs/06-local-development/README.md`
-- implemented features inventory: `docs/08-implemented-system/README.md`
+- system architecture: `docs/02-system-architecture/README.md`
