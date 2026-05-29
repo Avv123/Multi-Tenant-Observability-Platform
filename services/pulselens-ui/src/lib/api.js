@@ -3,7 +3,6 @@ const BASE_URLS = {
   ingest: "http://localhost:8082",
   query: "http://localhost:8084",
   alerting: "http://localhost:8085",
-  archive: "http://localhost:8086",
 };
 
 function buildQueryString(filters = {}) {
@@ -391,22 +390,3 @@ export const alertingApi = {
   },
 };
 
-export const archiveApi = {
-  stats(token) {
-    return request("archive", "/api/v1/archive/stats", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  },
-  listReplayJobs(token) {
-    return request("archive", "/api/v1/replay-jobs", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  },
-  createReplayJob(token, body) {
-    return request("archive", "/api/v1/replay-jobs", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    });
-  },
-};

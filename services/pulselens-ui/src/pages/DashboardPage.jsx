@@ -6,7 +6,7 @@ import IncidentWorkspaceSection from "../components/incidents/IncidentWorkspaceS
 import LineChart from "../components/LineChart";
 import Section from "../components/Section";
 import StatCard from "../components/StatCard";
-import { alertingApi, archiveApi, ingestApi, queryApi, tenantApi } from "../lib/api";
+import { alertingApi, ingestApi, queryApi, tenantApi } from "../lib/api";
 import {
   builderFromDashboardWidget,
   builderToWidgetPayload,
@@ -88,8 +88,6 @@ export default function DashboardPage({ state, onNotification }) {
     dashboards: [],
     channels: [],
     deliveries: [],
-    replayJobs: [],
-    replayStats: null,
     incidentComments: [],
     incidentTimeline: [],
     incidentDeliveries: [],
@@ -213,8 +211,6 @@ export default function DashboardPage({ state, onNotification }) {
         dashboards,
         channels,
         deliveries,
-        replayJobs,
-        replayStats,
         users,
         services,
         logSeverity,
@@ -243,8 +239,6 @@ export default function DashboardPage({ state, onNotification }) {
         queryApi.listDashboards(token),
         alertingApi.listNotificationChannels(token),
         alertingApi.listNotificationDeliveries(token),
-        archiveApi.listReplayJobs(token),
-        archiveApi.stats(token),
         tenantApi.listUsers(state.tenantId, token),
         tenantApi.listServices(state.tenantId, token),
         queryApi.logSeverityWithFilters(token, logAnalyticsFilters),
@@ -276,8 +270,6 @@ export default function DashboardPage({ state, onNotification }) {
         dashboards,
         channels,
         deliveries,
-        replayJobs,
-        replayStats,
         users,
         services,
         logSeverity,
@@ -543,23 +535,7 @@ export default function DashboardPage({ state, onNotification }) {
     }
   }
 
-  async function handleCreateReplayJob(event) {
-    event.preventDefault();
-    try {
-      const endTime = new Date();
-      const startTime = new Date(Date.now() - Number(replayForm.window_minutes) * 60 * 1000);
-      await archiveApi.createReplayJob(token, {
-        service_id: state.serviceId,
-        event_type: replayForm.event_type,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-      });
-      onNotification("Replay job created.");
-      await loadDashboard();
-    } catch (error) {
-      onNotification(error.message, "error");
-    }
-  }
+
 
   async function handleIncidentAction(action, incidentId) {
     try {
@@ -953,7 +929,6 @@ export default function DashboardPage({ state, onNotification }) {
           columns={[
             { key: "status", label: "Status" },
             { key: "telemetry_deleted", label: "Telemetry Deleted" },
-            { key: "archive_deleted", label: "Archive Deleted" },
             { key: "file_delete_errors", label: "File Errors" },
             { key: "started_at", label: "Started", render: (row) => formatDate(row.started_at) },
             { key: "completed_at", label: "Completed", render: (row) => formatDate(row.completed_at) },
@@ -1363,39 +1338,7 @@ export default function DashboardPage({ state, onNotification }) {
         onResetWidgetEditor={resetWidgetEditor}
       />
 
-      <Section title="Archive And Replay">
-        <div className="key-value-grid">
-          <span>Replay Jobs</span><code>{data.replayStats?.replay_job_count ?? 0}</code>
-        </div>
-        <form className="form-grid" onSubmit={handleCreateReplayJob}>
-          <label>
-            Event Type
-            <select value={replayForm.event_type} onChange={(event) => setReplayForm({ ...replayForm, event_type: event.target.value })}>
-              <option value="log">log</option>
-              <option value="metric">metric</option>
-              <option value="trace">trace</option>
-              <option value="custom">custom</option>
-            </select>
-          </label>
-          <label>
-            Window Minutes
-            <input value={replayForm.window_minutes} onChange={(event) => setReplayForm({ ...replayForm, window_minutes: event.target.value })} />
-          </label>
-          <div className="form-actions">
-            <button type="submit">Create Replay Job</button>
-          </div>
-        </form>
-        <DataTable
-          columns={[
-            { key: "event_type", label: "Event Type" },
-            { key: "status", label: "Status" },
-            { key: "replay_count", label: "Replay Count" },
-            { key: "start_time", label: "Start", render: (row) => formatDate(row.start_time) },
-            { key: "end_time", label: "End", render: (row) => formatDate(row.end_time) },
-          ]}
-          rows={data.replayJobs}
-        />
-      </Section>
+
     </div>
   );
 }

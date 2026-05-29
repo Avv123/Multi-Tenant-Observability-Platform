@@ -4,7 +4,6 @@ use (
 	./libs/pulselens-common
 	./libs/pulselens-platform
 	./services/pulselens-alerting-service
-	./services/pulselens-archive-service
 	./services/pulselens-ingest-service
 	./services/pulselens-processing-service
 	./services/pulselens-query-service
