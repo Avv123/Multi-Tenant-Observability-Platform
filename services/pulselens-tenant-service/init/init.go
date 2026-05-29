@@ -34,7 +34,7 @@ func seedDemoData(ctx context.Context) {
 			ID:            "tenant_demo",
 			Name:          "Demo Workspace",
 			Slug:          demoSlug,
-			Plan:          "enterprise",
+			Plan:          tenantmodels.PlanEnterprise,
 			IngestQuota:   1000000,
 			RetentionDays: 90,
 		}

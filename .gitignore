@@ -50,3 +50,6 @@ docs/*
 !docs/01-overview/**
 !docs/02-system-architecture/
 !docs/02-system-architecture/**
+
+# Project management (Local only)
+TODO.md

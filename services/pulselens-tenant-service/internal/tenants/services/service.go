@@ -16,6 +16,7 @@ import (
 	"github.com/omniful/pulselens-platform/errs"
 	"github.com/omniful/pulselens-platform/idgen"
 	"github.com/omniful/pulselens-platform/logging"
+	"github.com/omniful/pulselens-tenant-service/constants"
 	"github.com/omniful/pulselens-tenant-service/internal/tenants/models"
 	"github.com/omniful/pulselens-tenant-service/internal/tenants/repositories"
 	tenantrequests "github.com/omniful/pulselens-tenant-service/internal/tenants/requests"
@@ -69,8 +70,8 @@ func (s *Service) CreateTenant(ctx context.Context, request *tenantrequests.Crea
 		TenantID:     tenantModel.ID,
 		ActorUserID:  userModel.ID,
 		ActorType:    "internal",
-		Action:       "tenant.created",
-		ResourceType: "tenant",
+		Action:       constants.ActionTenantCreated,
+		ResourceType: constants.ResourceTenant,
 		ResourceID:   tenantModel.ID,
 		Payload:      marshalJSON(genericPayload{"slug": tenantModel.Slug, "plan": tenantModel.Plan}),
 	}
@@ -239,7 +240,7 @@ func (s *Service) ResolveAPIKey(ctx context.Context, rawKey string) (pulsetenant
 		KeyID:       keyModel.ID,
 		TenantID:    tenantModel.ID,
 		TenantName:  tenantModel.Name,
-		Plan:        tenantModel.Plan,
+		Plan:        string(tenantModel.Plan),
 		IngestQuota: tenantModel.IngestQuota,
 		ServiceID:   serviceModel.ID,
 		ServiceName: serviceModel.Name,
