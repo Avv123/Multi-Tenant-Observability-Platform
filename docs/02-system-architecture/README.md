@@ -72,7 +72,6 @@ Owns:
 - dead-letter routing
 - dedupe enforcement
 - storage writes
-- archival fanout
 
 Why:
 
@@ -127,10 +126,6 @@ WLOG --> CH[ClickHouse]
 WMET --> CH
 WTRC --> CH
 WEVT --> CH
-WLOG --> S3[S3 Archive]
-WMET --> S3
-WTRC --> S3
-WEVT --> S3
 QRY[Query Service] --> CH
 QRY --> REDIS[Redis Query Cache]
 UI[React UI] --> QRY
@@ -216,5 +211,4 @@ Why:
 - keep control plane and telemetry plane separate
 - keep Redis on hot-path state only
 - keep ClickHouse as hot telemetry store
-- keep S3 for archive and replay, not primary query
 

@@ -8,8 +8,8 @@ PulseLens is a multi-tenant observability platform built to handle logs, metrics
 - event-driven ingestion and processing through Kafka
 - ClickHouse-backed telemetry reads and rollups
 - tenant-safe querying and dashboard workflows
-- alerting, incidents, delivery tracking, and archive/replay
-- Production-grade reliability features including automated backup, restore, and chaos engineering drills.
+- alerting, incidents, and delivery tracking
+- Production-grade reliability features including automated chaos engineering drills.
 
 ## Project Constraints
 
