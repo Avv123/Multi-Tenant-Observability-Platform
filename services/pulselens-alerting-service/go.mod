@@ -7,6 +7,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/omniful/pulselens-common v0.0.0
 	github.com/omniful/pulselens-platform v0.0.0
+	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.24.2
 )
 
@@ -86,7 +87,6 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.4.5 // indirect
 )
 
 replace github.com/omniful/pulselens-common => ../../libs/pulselens-common

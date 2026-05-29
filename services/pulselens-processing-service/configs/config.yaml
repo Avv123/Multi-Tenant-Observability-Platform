@@ -33,7 +33,7 @@ retention:
   archiveDays: 14
   cleanupIntervalSeconds: 20
 archive:
-  enabled: true
+  enabled: false
   endpoint: "http://localhost:9010"
   region: "us-east-1"
   accessKey: "minioadmin"

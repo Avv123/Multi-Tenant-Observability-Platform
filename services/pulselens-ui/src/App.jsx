@@ -8,11 +8,9 @@ import MetricsPage from "./pages/MetricsPage";
 import TracesPage from "./pages/TracesPage";
 import AlertsPage from "./pages/AlertsPage";
 import IncidentsPage from "./pages/IncidentsPage";
-import ArchivePage from "./pages/ArchivePage";
 import PlatformPage from "./pages/PlatformPage";
 import SettingsPage from "./pages/SettingsPage";
 import { loadState, saveState } from "./lib/storage";
-import AiWidget from "./components/AiWidget";
 
 // Decode JWT payload without a library
 function jwtRole(token) {
@@ -63,7 +61,6 @@ const PAGE_META = {
   traces: { label: "Traces", icon: Icons.Target },
   alerts: { label: "Alert Rules", icon: Icons.Bell },
   incidents: { label: "Incidents", icon: Icons.Zap },
-  archive: { label: "Archive", icon: Icons.Archive },
   platform: { label: "Platform", icon: Icons.Server },
   settings: { label: "Settings", icon: Icons.Settings },
   bootstrap: { label: "Setup Wizard", icon: Icons.Shield },
@@ -120,7 +117,6 @@ function SideNav({ route, navigate, state, onLogout }) {
     },
     {
       group: "Management", items: [
-        { path: "archive", label: "Data Archive" },
         { path: "settings", label: "Settings" },
       ]
     }
@@ -188,7 +184,6 @@ function RouteView({ route, state, setState, notify }) {
     case "traces": return <TracesPage    {...props} />;
     case "alerts": return <AlertsPage    {...props} />;
     case "incidents": return <IncidentsPage {...props} />;
-    case "archive": return <ArchivePage   {...props} />;
     case "platform": return <PlatformPage  {...props} />;
     case "settings": return <SettingsPage  {...props} />;
     default: return <OverviewPage  {...props} />;
@@ -277,7 +272,6 @@ export default function App() {
       </div>
 
       <ToastStack toasts={toasts} dismiss={dismiss} />
-      {state?.token && state.token !== "bootstrap-session" && <AiWidget state={state} />}
     </div>
   );
 }

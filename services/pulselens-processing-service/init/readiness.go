@@ -24,9 +24,6 @@ func Readiness(ctx context.Context) []platformreadiness.DependencyStatus {
 		platformreadiness.Check{Name: "redis", Kind: "cache", Fn: func(ctx context.Context) error {
 			return platformreadiness.CheckRedis(ctx, firstRedisHost(), config.GetInt("redis.db"))
 		}},
-		platformreadiness.Check{Name: "minio", Kind: "objectstore", Fn: func(ctx context.Context) error {
-			return platformreadiness.CheckObjectStore(ctx, config.GetBool("archive.enabled"), config.GetString("archive.endpoint"), config.GetString("archive.region"), config.GetString("archive.accessKey"), config.GetString("archive.secretKey"), config.GetString("archive.bucket"), config.GetString("archive.prefix"), config.GetBool("archive.forcePathStyle"))
-		}},
 	)
 }
 

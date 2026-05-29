@@ -23,9 +23,6 @@ run "redis_outage" python3 "${ROOT_DIR}/scripts/test_redis_outage.py" > "${REPOR
 run "clickhouse_outage" python3 "${ROOT_DIR}/scripts/test_clickhouse_outage.py" > "${REPORT_DIR}/clickhouse_outage.json"
 run "kafka_outage" python3 "${ROOT_DIR}/scripts/test_kafka_outage.py" > "${REPORT_DIR}/kafka_outage.json"
 run "postgres_outage" python3 "${ROOT_DIR}/scripts/test_postgres_outage.py" > "${REPORT_DIR}/postgres_outage.json"
-run "minio_outage" python3 "${ROOT_DIR}/scripts/test_minio_outage.py" > "${REPORT_DIR}/minio_outage.json"
-run "multi_dependency_outage" python3 "${ROOT_DIR}/scripts/test_multi_dependency_outage.py" > "${REPORT_DIR}/multi_dependency_outage.json"
-run "backup_restore" python3 "${ROOT_DIR}/scripts/test_backup_restore.py" > "${REPORT_DIR}/backup_restore.json"
 run "benchmark_report" python3 "${ROOT_DIR}/scripts/generate_benchmark_report.py" "${REPORT_DIR}" "${REPORT_DIR}/load.json" "${REPORT_DIR}/soak.json"
 
 echo
