@@ -1,7 +1,7 @@
 # PulseLens 🛡️
 **Enterprise-Grade, Multi-Tenant Observability Platform**
 
-PulseLens is a comprehensive observability suite designed for high-performance telemetry processing and seamless multi-tenant operations. It provides a unified experience for **Logs, Metrics, and Traces**, with built-in support for alerting, and automated data archiving.
+PulseLens is a comprehensive observability suite designed for high-performance telemetry processing and seamless multi-tenant operations. It provides a unified experience for **Logs, Metrics, and Traces**, with built-in support for real-time alerting.
 
 ---
 
@@ -10,9 +10,7 @@ PulseLens is a comprehensive observability suite designed for high-performance t
 - **Unified Telemetry:** Native support for structured Logs, numeric Metrics, and distributed Traces.
 - **Incident Management:** Full lifecycle tracking with assignments, comments, and automated timelines.
 - **Intelligent Alerting:** Flexible rule engine with support for Slack/Webhook/Email notifications.
-- **Data Lifecycle:** Automated archiving to S3-compatible storage (MinIO) with on-demand replay capabilities.
 - **Platform Resilience:** Includes automated chaos drills and backup/restore verification scripts.
-- **PulseLens AI:** Integrated LLM assistant (Llama 3.2 via Ollama) to help debug and navigate telemetry in real-time.
 - **Modern UI:** Premium React-based dashboarding with a sleek, dark-mode-first aesthetic.
 
 ---
@@ -24,8 +22,6 @@ PulseLens is built as a set of optimized microservices:
 - **`processing-service`**: Real-time stream processing and deduplication.
 - **`query-service`**: Analytics engine for ClickHouse-backed telemetry reads.
 - **`alerting-service`**: Threshold-based rule evaluation and incident tracking.
-- **`archive-service`**: Cold-storage management and replay workers.
-- **`ai-service`**: LLM-powered assistance for platform operations.
 - **`ui`**: Unified investigation and management portal.
 
 ---
@@ -35,8 +31,6 @@ PulseLens is built as a set of optimized microservices:
 - **Frontend:** React, Vite, Vanilla CSS
 - **Databases:** PostgreSQL (Control Plane), ClickHouse (Telemetry), Redis (Caching/Locks)
 - **Messaging:** Redpanda (Kafka-compatible)
-- **Storage:** MinIO (S3-compatible)
-- **AI Backend:** Ollama (Llama 3.2)
 
 ---
 
