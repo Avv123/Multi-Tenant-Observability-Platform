@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
-	platformerrs "github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-tenant-service/internal/tenants/repositories"
-	tenantservices "github.com/omniful/pulselens-tenant-service/internal/tenants/services"
-	tenantrequests "github.com/omniful/pulselens-tenant-service/internal/tenants/requests"
-	tenanterror "github.com/omniful/pulselens-tenant-service/pkg/error"
-	"github.com/omniful/pulselens-tenant-service/pkg/postgres"
+	platformerrs "github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-tenant-service/internal/tenants/repositories"
+	tenantservices "github.com/Avv123/pulselens-tenant-service/internal/tenants/services"
+	tenantrequests "github.com/Avv123/pulselens-tenant-service/internal/tenants/requests"
+	tenanterror "github.com/Avv123/pulselens-tenant-service/pkg/error"
+	"github.com/Avv123/pulselens-tenant-service/pkg/postgres"
 )
 
 // AuthController handles public-facing authentication routes (/api/v1/auth).

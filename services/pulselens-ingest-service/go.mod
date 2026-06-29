@@ -1,12 +1,12 @@
-module github.com/omniful/pulselens-ingest-service
+module github.com/Avv123/pulselens-ingest-service
 
 go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/omniful/pulselens-common v0.0.0
-	github.com/omniful/pulselens-platform v0.0.0
+	github.com/Avv123/pulselens-common v0.0.0
+	github.com/Avv123/pulselens-platform v0.0.0
 )
 
 require (
@@ -88,6 +88,6 @@ require (
 	gorm.io/gorm v1.24.2 // indirect
 )
 
-replace github.com/omniful/pulselens-common => ../../libs/pulselens-common
+replace github.com/Avv123/pulselens-common => ../../libs/pulselens-common
 
-replace github.com/omniful/pulselens-platform => ../../libs/pulselens-platform
+replace github.com/Avv123/pulselens-platform => ../../libs/pulselens-platform

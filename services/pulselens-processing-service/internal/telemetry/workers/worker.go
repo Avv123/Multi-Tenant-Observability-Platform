@@ -3,7 +3,7 @@ package workers
 import (
 	"context"
 
-	telemetryservices "github.com/omniful/pulselens-processing-service/internal/telemetry/services"
+	telemetryservices "github.com/Avv123/pulselens-processing-service/internal/telemetry/services"
 )
 
 func Run(ctx context.Context) error {

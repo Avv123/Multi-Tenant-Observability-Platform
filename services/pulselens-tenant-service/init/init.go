@@ -3,13 +3,13 @@ package appinit
 import (
 	"context"
 
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/logging"
-	platformpostgres "github.com/omniful/pulselens-platform/postgres"
-	platformredis "github.com/omniful/pulselens-platform/redis"
-	tenantmodels "github.com/omniful/pulselens-tenant-service/internal/tenants/models"
-	"github.com/omniful/pulselens-tenant-service/pkg/postgres"
-	tenantredis "github.com/omniful/pulselens-tenant-service/pkg/redis"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformpostgres "github.com/Avv123/pulselens-platform/postgres"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
+	tenantmodels "github.com/Avv123/pulselens-tenant-service/internal/tenants/models"
+	"github.com/Avv123/pulselens-tenant-service/pkg/postgres"
+	tenantredis "github.com/Avv123/pulselens-tenant-service/pkg/redis"
 	"golang.org/x/crypto/bcrypt"
 )
 

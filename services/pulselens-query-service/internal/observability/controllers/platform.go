@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
-	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
+	"github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
+	observabilityresponses "github.com/Avv123/pulselens-query-service/internal/observability/responses"
 )
 
 func (c *Controller) PlatformRuntime(ctx *gin.Context) {

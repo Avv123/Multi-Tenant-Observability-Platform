@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	observabilityrequests "github.com/omniful/pulselens-query-service/internal/observability/requests"
-	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	observabilityrequests "github.com/Avv123/pulselens-query-service/internal/observability/requests"
+	observabilityresponses "github.com/Avv123/pulselens-query-service/internal/observability/responses"
 )
 
 type countRow struct {

@@ -3,15 +3,15 @@ package appinit
 import (
 	"context"
 
-	alertmodels "github.com/omniful/pulselens-alerting-service/internal/alerts/models"
-	serviceclickhouse "github.com/omniful/pulselens-alerting-service/pkg/clickhouse"
-	servicepostgres "github.com/omniful/pulselens-alerting-service/pkg/postgres"
-	serviceredis "github.com/omniful/pulselens-alerting-service/pkg/redis"
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/logging"
-	platformpostgres "github.com/omniful/pulselens-platform/postgres"
-	platformredis "github.com/omniful/pulselens-platform/redis"
+	alertmodels "github.com/Avv123/pulselens-alerting-service/internal/alerts/models"
+	serviceclickhouse "github.com/Avv123/pulselens-alerting-service/pkg/clickhouse"
+	servicepostgres "github.com/Avv123/pulselens-alerting-service/pkg/postgres"
+	serviceredis "github.com/Avv123/pulselens-alerting-service/pkg/redis"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformpostgres "github.com/Avv123/pulselens-platform/postgres"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
 )
 
 func Initialize(ctx context.Context) {

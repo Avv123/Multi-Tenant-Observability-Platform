@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/omniful/pulselens-platform/cacheversion"
-	"github.com/omniful/pulselens-platform/config"
-	queryredis "github.com/omniful/pulselens-query-service/pkg/redis"
+	"github.com/Avv123/pulselens-platform/cacheversion"
+	"github.com/Avv123/pulselens-platform/config"
+	queryredis "github.com/Avv123/pulselens-query-service/pkg/redis"
 )
 
 func cacheTTL() time.Duration {

@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
 )
 
 func (r *Repository) ListCleanupRuns(ctx context.Context, limit int) ([]observabilitymodels.CleanupRun, error) {

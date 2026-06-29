@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	platformauth "github.com/omniful/pulselens-platform/auth"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
+	platformauth "github.com/Avv123/pulselens-platform/auth"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
 )
 
 func AuthenticateJWT(ctx context.Context) gin.HandlerFunc {

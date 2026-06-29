@@ -1,8 +1,8 @@
 package responses
 
 import (
-	platformruntime "github.com/omniful/pulselens-platform/runtime"
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
+	platformruntime "github.com/Avv123/pulselens-platform/runtime"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
 )
 
 type PlatformOverview struct {

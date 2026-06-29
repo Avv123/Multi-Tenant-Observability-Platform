@@ -3,13 +3,13 @@ package appinit
 import (
 	"context"
 
-	"github.com/omniful/pulselens-ingest-service/pkg/cache"
-	"github.com/omniful/pulselens-ingest-service/pkg/producer"
-	"github.com/omniful/pulselens-ingest-service/pkg/tenantclient"
-	"github.com/omniful/pulselens-platform/config"
-	platformkafka "github.com/omniful/pulselens-platform/kafka"
-	"github.com/omniful/pulselens-platform/logging"
-	platformredis "github.com/omniful/pulselens-platform/redis"
+	"github.com/Avv123/pulselens-ingest-service/pkg/cache"
+	"github.com/Avv123/pulselens-ingest-service/pkg/producer"
+	"github.com/Avv123/pulselens-ingest-service/pkg/tenantclient"
+	"github.com/Avv123/pulselens-platform/config"
+	platformkafka "github.com/Avv123/pulselens-platform/kafka"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
 )
 
 func Initialize(_ context.Context) {

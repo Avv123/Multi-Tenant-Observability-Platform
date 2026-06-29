@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	commonauth "github.com/omniful/pulselens-common/auth"
-	"github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
-	observabilityrequests "github.com/omniful/pulselens-query-service/internal/observability/requests"
-	observabilityservices "github.com/omniful/pulselens-query-service/internal/observability/services"
+	commonauth "github.com/Avv123/pulselens-common/auth"
+	"github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
+	observabilityrequests "github.com/Avv123/pulselens-query-service/internal/observability/requests"
+	observabilityservices "github.com/Avv123/pulselens-query-service/internal/observability/services"
 )
 
 type Controller struct {

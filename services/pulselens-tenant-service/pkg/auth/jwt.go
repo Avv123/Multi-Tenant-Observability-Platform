@@ -3,8 +3,8 @@ package auth
 import (
 	"time"
 
-	commonauth "github.com/omniful/pulselens-common/auth"
-	platformauth "github.com/omniful/pulselens-platform/auth"
+	commonauth "github.com/Avv123/pulselens-common/auth"
+	platformauth "github.com/Avv123/pulselens-platform/auth"
 )
 
 func GenerateToken(secret string, claims commonauth.Claims) (string, error) {

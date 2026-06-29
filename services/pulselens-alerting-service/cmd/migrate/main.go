@@ -6,7 +6,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	alertModels "github.com/omniful/pulselens-alerting-service/internal/alerts/models"
+	alertModels "github.com/Avv123/pulselens-alerting-service/internal/alerts/models"
 )
 
 func main() {

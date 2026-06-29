@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/omniful/pulselens-platform/errs"
-	"github.com/omniful/pulselens-platform/idgen"
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
-	observabilityrequests "github.com/omniful/pulselens-query-service/internal/observability/requests"
-	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
+	"github.com/Avv123/pulselens-platform/errs"
+	"github.com/Avv123/pulselens-platform/idgen"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
+	observabilityrequests "github.com/Avv123/pulselens-query-service/internal/observability/requests"
+	observabilityresponses "github.com/Avv123/pulselens-query-service/internal/observability/responses"
 )
 
 func normalizeDashboardRequest(request observabilityrequests.UpdateDashboardRequest) observabilityrequests.UpdateDashboardRequest {

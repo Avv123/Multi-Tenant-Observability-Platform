@@ -3,7 +3,7 @@ package readiness
 import (
 	"context"
 
-	platformobjectstore "github.com/omniful/pulselens-platform/objectstore"
+	platformobjectstore "github.com/Avv123/pulselens-platform/objectstore"
 )
 
 func CheckObjectStore(ctx context.Context, enabled bool, endpoint, region, accessKey, secretKey, bucket, prefix string, forcePathStyle bool) error {

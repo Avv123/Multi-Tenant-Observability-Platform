@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	alertrequests "github.com/omniful/pulselens-alerting-service/internal/alerts/requests"
-	alertservices "github.com/omniful/pulselens-alerting-service/internal/alerts/services"
-	commonauth "github.com/omniful/pulselens-common/auth"
-	platformresponse "github.com/omniful/pulselens-platform/response"
+	alertrequests "github.com/Avv123/pulselens-alerting-service/internal/alerts/requests"
+	alertservices "github.com/Avv123/pulselens-alerting-service/internal/alerts/services"
+	commonauth "github.com/Avv123/pulselens-common/auth"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
 )
 
 type Controller struct {

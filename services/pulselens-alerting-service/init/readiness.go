@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/logging"
-	platformreadiness "github.com/omniful/pulselens-platform/readiness"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformreadiness "github.com/Avv123/pulselens-platform/readiness"
 )
 
 func Readiness(ctx context.Context) []platformreadiness.DependencyStatus {

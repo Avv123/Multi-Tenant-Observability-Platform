@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/omniful/pulselens-platform/idgen"
+	"github.com/Avv123/pulselens-platform/idgen"
 )
 
 type Heartbeat struct {

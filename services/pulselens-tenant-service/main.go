@@ -6,14 +6,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/httpserver"
-	"github.com/omniful/pulselens-platform/idgen"
-	"github.com/omniful/pulselens-platform/logging"
-	platformruntime "github.com/omniful/pulselens-platform/runtime"
-	appinit "github.com/omniful/pulselens-tenant-service/init"
-	tenantredis "github.com/omniful/pulselens-tenant-service/pkg/redis"
-	"github.com/omniful/pulselens-tenant-service/router"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/httpserver"
+	"github.com/Avv123/pulselens-platform/idgen"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformruntime "github.com/Avv123/pulselens-platform/runtime"
+	appinit "github.com/Avv123/pulselens-tenant-service/init"
+	tenantredis "github.com/Avv123/pulselens-tenant-service/pkg/redis"
+	"github.com/Avv123/pulselens-tenant-service/router"
 )
 
 func main() {

@@ -1,5 +1,5 @@
 package requests
 
-import pulsetelemetry "github.com/omniful/pulselens-common/telemetry"
+import pulsetelemetry "github.com/Avv123/pulselens-common/telemetry"
 
 type IngestRequest = pulsetelemetry.BatchIngestRequest

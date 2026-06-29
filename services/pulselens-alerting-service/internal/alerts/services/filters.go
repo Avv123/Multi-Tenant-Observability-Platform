@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	alertrepositories "github.com/omniful/pulselens-alerting-service/internal/alerts/repositories"
+	alertrepositories "github.com/Avv123/pulselens-alerting-service/internal/alerts/repositories"
 )
 
 func IncidentFiltersFromQuery(ctx *gin.Context) alertrepositories.IncidentFilters {

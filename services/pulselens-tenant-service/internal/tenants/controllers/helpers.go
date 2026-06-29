@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"github.com/gin-gonic/gin"
-	commonauth "github.com/omniful/pulselens-common/auth"
-	platformerrs "github.com/omniful/pulselens-platform/errs"
-	tenanterror "github.com/omniful/pulselens-tenant-service/pkg/error"
+	commonauth "github.com/Avv123/pulselens-common/auth"
+	platformerrs "github.com/Avv123/pulselens-platform/errs"
+	tenanterror "github.com/Avv123/pulselens-tenant-service/pkg/error"
 )
 
 // claimsFromContext extracts the JWT claims injected by the AuthenticateJWT middleware.

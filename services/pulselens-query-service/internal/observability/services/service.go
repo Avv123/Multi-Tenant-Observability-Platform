@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 
-	commonauth "github.com/omniful/pulselens-common/auth"
-	"github.com/omniful/pulselens-platform/cacheversion"
-	"github.com/omniful/pulselens-platform/errs"
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
-	observabilityrepositories "github.com/omniful/pulselens-query-service/internal/observability/repositories"
-	observabilityrequests "github.com/omniful/pulselens-query-service/internal/observability/requests"
-	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
-	queryclickhouse "github.com/omniful/pulselens-query-service/pkg/clickhouse"
-	"github.com/omniful/pulselens-query-service/pkg/postgres"
-	queryredis "github.com/omniful/pulselens-query-service/pkg/redis"
+	commonauth "github.com/Avv123/pulselens-common/auth"
+	"github.com/Avv123/pulselens-platform/cacheversion"
+	"github.com/Avv123/pulselens-platform/errs"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
+	observabilityrepositories "github.com/Avv123/pulselens-query-service/internal/observability/repositories"
+	observabilityrequests "github.com/Avv123/pulselens-query-service/internal/observability/requests"
+	observabilityresponses "github.com/Avv123/pulselens-query-service/internal/observability/responses"
+	queryclickhouse "github.com/Avv123/pulselens-query-service/pkg/clickhouse"
+	"github.com/Avv123/pulselens-query-service/pkg/postgres"
+	queryredis "github.com/Avv123/pulselens-query-service/pkg/redis"
 )
 
 type Service struct {

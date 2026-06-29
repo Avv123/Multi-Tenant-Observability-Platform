@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	pulsetelemetry "github.com/omniful/pulselens-common/telemetry"
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	serviceclickhouse "github.com/omniful/pulselens-processing-service/pkg/clickhouse"
+	pulsetelemetry "github.com/Avv123/pulselens-common/telemetry"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	serviceclickhouse "github.com/Avv123/pulselens-processing-service/pkg/clickhouse"
 )
 
 func (s *Service) persistToClickHouse(ctx context.Context, envelope pulsetelemetry.Envelope, payloadBytes []byte) error {

@@ -3,9 +3,9 @@ package validators
 import (
 	"strings"
 
-	pulsetelemetry "github.com/omniful/pulselens-common/telemetry"
-	pulselens_error "github.com/omniful/pulselens-ingest-service/pkg/error"
-	"github.com/omniful/pulselens-platform/errs"
+	pulsetelemetry "github.com/Avv123/pulselens-common/telemetry"
+	pulselens_error "github.com/Avv123/pulselens-ingest-service/pkg/error"
+	"github.com/Avv123/pulselens-platform/errs"
 )
 
 func ValidateBatch(request *pulsetelemetry.BatchIngestRequest) errs.CustomError {

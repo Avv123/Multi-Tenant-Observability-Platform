@@ -1,6 +1,6 @@
 package clickhouse
 
-import platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
+import platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
 
 var client *platformclickhouse.Client
 

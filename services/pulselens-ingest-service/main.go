@@ -6,14 +6,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/omniful/pulselens-ingest-service/init"
-	"github.com/omniful/pulselens-ingest-service/pkg/cache"
-	"github.com/omniful/pulselens-ingest-service/router"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/httpserver"
-	"github.com/omniful/pulselens-platform/idgen"
-	"github.com/omniful/pulselens-platform/logging"
-	platformruntime "github.com/omniful/pulselens-platform/runtime"
+	"github.com/Avv123/pulselens-ingest-service/init"
+	"github.com/Avv123/pulselens-ingest-service/pkg/cache"
+	"github.com/Avv123/pulselens-ingest-service/router"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/httpserver"
+	"github.com/Avv123/pulselens-platform/idgen"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformruntime "github.com/Avv123/pulselens-platform/runtime"
 )
 
 func main() {

@@ -1,6 +1,6 @@
 package requests
 
-import pulsetenant "github.com/omniful/pulselens-common/tenant"
+import pulsetenant "github.com/Avv123/pulselens-common/tenant"
 
 type CreateAPIKeyRequest struct {
 	TenantID  string                    `json:"tenant_id" validate:"required"`

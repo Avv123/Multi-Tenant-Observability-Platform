@@ -2,7 +2,7 @@ package redis
 
 import (
 	"github.com/go-redis/redis/v8"
-	"github.com/omniful/pulselens-platform/netutil"
+	"github.com/Avv123/pulselens-platform/netutil"
 )
 
 func New(addr string, db int) *redis.Client {

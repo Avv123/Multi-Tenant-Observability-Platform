@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	pulsetenant "github.com/omniful/pulselens-common/tenant"
-	"github.com/omniful/pulselens-platform/netutil"
+	pulsetenant "github.com/Avv123/pulselens-common/tenant"
+	"github.com/Avv123/pulselens-platform/netutil"
 )
 
 type Client struct {
