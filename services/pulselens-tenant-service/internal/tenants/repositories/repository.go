@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 
-	"github.com/omniful/pulselens-tenant-service/internal/tenants/models"
+	"github.com/Avv123/pulselens-tenant-service/internal/tenants/models"
 	"gorm.io/gorm"
 )
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/errs"
+	"github.com/Avv123/pulselens-platform/errs"
 )
 
 type SuccessPayload struct {

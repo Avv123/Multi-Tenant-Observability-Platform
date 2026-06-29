@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/cors"
-	"github.com/omniful/pulselens-platform/httpserver"
-	"github.com/omniful/pulselens-platform/middleware"
-	platformreadiness "github.com/omniful/pulselens-platform/readiness"
-	appinit "github.com/omniful/pulselens-processing-service/init"
+	"github.com/Avv123/pulselens-platform/cors"
+	"github.com/Avv123/pulselens-platform/httpserver"
+	"github.com/Avv123/pulselens-platform/middleware"
+	platformreadiness "github.com/Avv123/pulselens-platform/readiness"
+	appinit "github.com/Avv123/pulselens-processing-service/init"
 )
 
 func Initialize(_ context.Context, server *httpserver.Server) error {

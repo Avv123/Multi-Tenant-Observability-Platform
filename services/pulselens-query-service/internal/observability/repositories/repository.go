@@ -6,12 +6,12 @@ import (
 	"errors"
 	"strings"
 
-	commonauth "github.com/omniful/pulselens-common/auth"
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	"github.com/omniful/pulselens-platform/idgen"
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
-	observabilityrequests "github.com/omniful/pulselens-query-service/internal/observability/requests"
-	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
+	commonauth "github.com/Avv123/pulselens-common/auth"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	"github.com/Avv123/pulselens-platform/idgen"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
+	observabilityrequests "github.com/Avv123/pulselens-query-service/internal/observability/requests"
+	observabilityresponses "github.com/Avv123/pulselens-query-service/internal/observability/responses"
 	"gorm.io/gorm"
 )
 

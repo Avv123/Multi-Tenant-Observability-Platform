@@ -11,8 +11,8 @@ services:
     image: postgres:16-alpine
     container_name: pulselens-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-omniful}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omniful}
+      POSTGRES_USER: ${POSTGRES_USER:-pulselens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulselens}
       POSTGRES_DB: ${POSTGRES_DB:-pulselens}
     ports:
       - "5433:5432"
@@ -21,7 +21,7 @@ services:
     mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
     cpus: 1.0
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omniful} -d ${POSTGRES_DB:-pulselens}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulselens} -d ${POSTGRES_DB:-pulselens}" ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -100,8 +100,8 @@ services:
     container_name: pulselens-clickhouse
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-pulselens}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-omniful}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-omniful}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-pulselens}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-pulselens}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
       - "8123:8123"
@@ -278,11 +278,11 @@ services:
       - "5521:3488"
     environment:
       CLICKHOUSE_URL: "http://clickhouse:8123"
-      CLICKHOUSE_USER: "${CLICKHOUSE_USER:-omniful}"
-      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:-omniful}"
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER:-pulselens}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:-pulselens}"
       VITE_CLICKHOUSE_URL: "http://clickhouse:8123"
-      VITE_CLICKHOUSE_USER: "${CLICKHOUSE_USER:-omniful}"
-      VITE_CLICKHOUSE_PASS: "${CLICKHOUSE_PASSWORD:-omniful}"
+      VITE_CLICKHOUSE_USER: "${CLICKHOUSE_USER:-pulselens}"
+      VITE_CLICKHOUSE_PASS: "${CLICKHOUSE_PASSWORD:-pulselens}"
     depends_on:
       clickhouse:
         condition: service_healthy

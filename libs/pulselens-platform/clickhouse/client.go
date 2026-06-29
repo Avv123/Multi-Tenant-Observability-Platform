@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/omniful/pulselens-platform/netutil"
+	"github.com/Avv123/pulselens-platform/netutil"
 )
 
 type Client struct {

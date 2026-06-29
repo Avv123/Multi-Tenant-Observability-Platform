@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	commonauth "github.com/omniful/pulselens-common/auth"
+	commonauth "github.com/Avv123/pulselens-common/auth"
 
 	"github.com/golang-jwt/jwt/v5"
 )

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	pulsetelemetry "github.com/omniful/pulselens-common/telemetry"
-	platformobjectstore "github.com/omniful/pulselens-platform/objectstore"
+	pulsetelemetry "github.com/Avv123/pulselens-common/telemetry"
+	platformobjectstore "github.com/Avv123/pulselens-platform/objectstore"
 )
 
 type Writer struct {

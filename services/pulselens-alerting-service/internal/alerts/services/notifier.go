@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	alertmodels "github.com/omniful/pulselens-alerting-service/internal/alerts/models"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/netutil"
+	alertmodels "github.com/Avv123/pulselens-alerting-service/internal/alerts/models"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/netutil"
 )
 
 type webhookChannelConfig struct {

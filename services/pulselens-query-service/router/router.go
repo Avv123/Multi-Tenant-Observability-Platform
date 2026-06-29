@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/authz"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/cors"
-	"github.com/omniful/pulselens-platform/httpserver"
-	"github.com/omniful/pulselens-platform/middleware"
-	platformreadiness "github.com/omniful/pulselens-platform/readiness"
-	appinit "github.com/omniful/pulselens-query-service/init"
-	querycontrollers "github.com/omniful/pulselens-query-service/internal/observability/controllers"
-	querymiddleware "github.com/omniful/pulselens-query-service/internal/observability/middleware"
+	"github.com/Avv123/pulselens-platform/authz"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/cors"
+	"github.com/Avv123/pulselens-platform/httpserver"
+	"github.com/Avv123/pulselens-platform/middleware"
+	platformreadiness "github.com/Avv123/pulselens-platform/readiness"
+	appinit "github.com/Avv123/pulselens-query-service/init"
+	querycontrollers "github.com/Avv123/pulselens-query-service/internal/observability/controllers"
+	querymiddleware "github.com/Avv123/pulselens-query-service/internal/observability/middleware"
 )
 
 func Initialize(ctx context.Context, server *httpserver.Server) error {

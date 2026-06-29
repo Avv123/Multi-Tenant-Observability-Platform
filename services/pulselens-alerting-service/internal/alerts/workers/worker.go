@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	alertservices "github.com/omniful/pulselens-alerting-service/internal/alerts/services"
-	serviceredis "github.com/omniful/pulselens-alerting-service/pkg/redis"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/idgen"
-	"github.com/omniful/pulselens-platform/lock"
-	"github.com/omniful/pulselens-platform/logging"
+	alertservices "github.com/Avv123/pulselens-alerting-service/internal/alerts/services"
+	serviceredis "github.com/Avv123/pulselens-alerting-service/pkg/redis"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/idgen"
+	"github.com/Avv123/pulselens-platform/lock"
+	"github.com/Avv123/pulselens-platform/logging"
 )
 
 func Run(ctx context.Context) error {

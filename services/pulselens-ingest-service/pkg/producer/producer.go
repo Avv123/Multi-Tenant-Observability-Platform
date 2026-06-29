@@ -3,7 +3,7 @@ package producer
 import (
 	"sync"
 
-	platformkafka "github.com/omniful/pulselens-platform/kafka"
+	platformkafka "github.com/Avv123/pulselens-platform/kafka"
 )
 
 var (

@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/omniful/pulselens-platform/config"
-	platformkafka "github.com/omniful/pulselens-platform/kafka"
-	platformobjectstore "github.com/omniful/pulselens-platform/objectstore"
-	platformredis "github.com/omniful/pulselens-platform/redis"
-	platformruntime "github.com/omniful/pulselens-platform/runtime"
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
-	observabilityresponses "github.com/omniful/pulselens-query-service/internal/observability/responses"
-	queryclickhouse "github.com/omniful/pulselens-query-service/pkg/clickhouse"
-	"github.com/omniful/pulselens-query-service/pkg/postgres"
-	queryredis "github.com/omniful/pulselens-query-service/pkg/redis"
+	"github.com/Avv123/pulselens-platform/config"
+	platformkafka "github.com/Avv123/pulselens-platform/kafka"
+	platformobjectstore "github.com/Avv123/pulselens-platform/objectstore"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
+	platformruntime "github.com/Avv123/pulselens-platform/runtime"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
+	observabilityresponses "github.com/Avv123/pulselens-query-service/internal/observability/responses"
+	queryclickhouse "github.com/Avv123/pulselens-query-service/pkg/clickhouse"
+	"github.com/Avv123/pulselens-query-service/pkg/postgres"
+	queryredis "github.com/Avv123/pulselens-query-service/pkg/redis"
 )
 
 func (s *Service) PlatformRuntime(ctx context.Context) ([]platformruntime.Heartbeat, error) {

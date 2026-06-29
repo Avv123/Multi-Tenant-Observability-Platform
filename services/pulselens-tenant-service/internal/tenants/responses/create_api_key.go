@@ -1,6 +1,6 @@
 package responses
 
-import pulsetenant "github.com/omniful/pulselens-common/tenant"
+import pulsetenant "github.com/Avv123/pulselens-common/tenant"
 
 type CreateAPIKeyResponse struct {
 	ID        string                    `json:"id"`

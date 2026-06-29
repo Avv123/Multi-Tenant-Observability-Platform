@@ -1,4 +1,4 @@
-module github.com/omniful/pulselens-platform
+module github.com/Avv123/pulselens-platform
 
 go 1.24.0
 
@@ -12,7 +12,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
-	github.com/omniful/pulselens-common v0.0.0
+	github.com/Avv123/pulselens-common v0.0.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.24.2
@@ -90,4 +90,4 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 )
 
-replace github.com/omniful/pulselens-common => ../pulselens-common
+replace github.com/Avv123/pulselens-common => ../pulselens-common

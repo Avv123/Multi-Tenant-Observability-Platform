@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	pulsetelemetry "github.com/omniful/pulselens-common/telemetry"
-	"github.com/omniful/pulselens-ingest-service/internal/ingestion/services"
-	pulselens_error "github.com/omniful/pulselens-ingest-service/pkg/error"
-	platformerrs "github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
+	pulsetelemetry "github.com/Avv123/pulselens-common/telemetry"
+	"github.com/Avv123/pulselens-ingest-service/internal/ingestion/services"
+	pulselens_error "github.com/Avv123/pulselens-ingest-service/pkg/error"
+	platformerrs "github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
 )
 
 type Controller struct {

@@ -7,7 +7,7 @@ TARGET_DIR="${BACKUP_ROOT}/postgres"
 mkdir -p "${TARGET_DIR}"
 cd "${ROOT_DIR}"
 
-docker compose exec -T postgres pg_dump -U omniful -d pulselens --no-owner --no-privileges >"${TARGET_DIR}/pulselens.sql"
+docker compose exec -T postgres pg_dump -U pulselens -d pulselens --no-owner --no-privileges >"${TARGET_DIR}/pulselens.sql"
 cat > "${TARGET_DIR}/metadata.json" <<JSON
 {
   "database": "pulselens",

@@ -5,13 +5,13 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/authz"
-	"github.com/omniful/pulselens-platform/cors"
-	"github.com/omniful/pulselens-platform/httpserver"
-	"github.com/omniful/pulselens-platform/middleware"
-	platformreadiness "github.com/omniful/pulselens-platform/readiness"
-	appinit "github.com/omniful/pulselens-tenant-service/init"
-	tenantcontrollers "github.com/omniful/pulselens-tenant-service/internal/tenants/controllers"
+	"github.com/Avv123/pulselens-platform/authz"
+	"github.com/Avv123/pulselens-platform/cors"
+	"github.com/Avv123/pulselens-platform/httpserver"
+	"github.com/Avv123/pulselens-platform/middleware"
+	platformreadiness "github.com/Avv123/pulselens-platform/readiness"
+	appinit "github.com/Avv123/pulselens-tenant-service/init"
+	tenantcontrollers "github.com/Avv123/pulselens-tenant-service/internal/tenants/controllers"
 )
 
 func Initialize(ctx context.Context, s *httpserver.Server) error {

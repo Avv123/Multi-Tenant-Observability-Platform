@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	alertmodels "github.com/omniful/pulselens-alerting-service/internal/alerts/models"
-	serviceclickhouse "github.com/omniful/pulselens-alerting-service/pkg/clickhouse"
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	"github.com/omniful/pulselens-platform/logging"
+	alertmodels "github.com/Avv123/pulselens-alerting-service/internal/alerts/models"
+	serviceclickhouse "github.com/Avv123/pulselens-alerting-service/pkg/clickhouse"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	"github.com/Avv123/pulselens-platform/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )

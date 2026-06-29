@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/omniful/pulselens-platform/netutil"
+	"github.com/Avv123/pulselens-platform/netutil"
 )
 
 type Client struct {

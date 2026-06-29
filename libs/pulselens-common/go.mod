@@ -1,4 +1,4 @@
-module github.com/omniful/pulselens-common
+module github.com/Avv123/pulselens-common
 
 go 1.24.0
 

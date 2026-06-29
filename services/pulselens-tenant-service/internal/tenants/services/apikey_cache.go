@@ -15,9 +15,9 @@ import (
 	"fmt"
 	"time"
 
-	pulsetenant "github.com/omniful/pulselens-common/tenant"
+	pulsetenant "github.com/Avv123/pulselens-common/tenant"
 	goredis "github.com/go-redis/redis/v8"
-	tenantredis "github.com/omniful/pulselens-tenant-service/pkg/redis"
+	tenantredis "github.com/Avv123/pulselens-tenant-service/pkg/redis"
 )
 
 const apiKeyCacheTTL = 60 * time.Second

@@ -3,7 +3,7 @@ package readiness
 import (
 	"context"
 
-	platformredis "github.com/omniful/pulselens-platform/redis"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
 )
 
 func CheckRedis(ctx context.Context, addr string, db int) error {

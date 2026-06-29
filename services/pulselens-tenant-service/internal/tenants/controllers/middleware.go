@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/config"
-	platformerrs "github.com/omniful/pulselens-platform/errs"
-	serviceauth "github.com/omniful/pulselens-tenant-service/pkg/auth"
-	tenanterror "github.com/omniful/pulselens-tenant-service/pkg/error"
+	"github.com/Avv123/pulselens-platform/config"
+	platformerrs "github.com/Avv123/pulselens-platform/errs"
+	serviceauth "github.com/Avv123/pulselens-tenant-service/pkg/auth"
+	tenanterror "github.com/Avv123/pulselens-tenant-service/pkg/error"
 )
 
 func AuthenticateInternalToken(ctx context.Context) gin.HandlerFunc {

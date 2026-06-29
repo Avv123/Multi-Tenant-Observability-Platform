@@ -5,15 +5,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	pulsetenant "github.com/omniful/pulselens-common/tenant"
-	"github.com/omniful/pulselens-platform/config"
-	platformerrs "github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
-	"github.com/omniful/pulselens-tenant-service/internal/tenants/repositories"
-	tenantrequests "github.com/omniful/pulselens-tenant-service/internal/tenants/requests"
-	tenantservices "github.com/omniful/pulselens-tenant-service/internal/tenants/services"
-	tenanterror "github.com/omniful/pulselens-tenant-service/pkg/error"
-	"github.com/omniful/pulselens-tenant-service/pkg/postgres"
+	pulsetenant "github.com/Avv123/pulselens-common/tenant"
+	"github.com/Avv123/pulselens-platform/config"
+	platformerrs "github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
+	"github.com/Avv123/pulselens-tenant-service/internal/tenants/repositories"
+	tenantrequests "github.com/Avv123/pulselens-tenant-service/internal/tenants/requests"
+	tenantservices "github.com/Avv123/pulselens-tenant-service/internal/tenants/services"
+	tenanterror "github.com/Avv123/pulselens-tenant-service/pkg/error"
+	"github.com/Avv123/pulselens-tenant-service/pkg/postgres"
 )
 
 // InternalController handles service-to-service routes (/internal/api/v1).

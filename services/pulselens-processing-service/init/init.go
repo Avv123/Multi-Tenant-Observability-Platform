@@ -3,19 +3,19 @@ package appinit
 import (
 	"context"
 
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	"github.com/omniful/pulselens-platform/config"
-	platformkafka "github.com/omniful/pulselens-platform/kafka"
-	"github.com/omniful/pulselens-platform/logging"
-	platformobjectstore "github.com/omniful/pulselens-platform/objectstore"
-	platformpostgres "github.com/omniful/pulselens-platform/postgres"
-	platformredis "github.com/omniful/pulselens-platform/redis"
-	telemetrymodels "github.com/omniful/pulselens-processing-service/internal/telemetry/models"
-	"github.com/omniful/pulselens-processing-service/pkg/archive"
-	"github.com/omniful/pulselens-processing-service/pkg/cache"
-	serviceclickhouse "github.com/omniful/pulselens-processing-service/pkg/clickhouse"
-	"github.com/omniful/pulselens-processing-service/pkg/postgres"
-	"github.com/omniful/pulselens-processing-service/pkg/producer"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	"github.com/Avv123/pulselens-platform/config"
+	platformkafka "github.com/Avv123/pulselens-platform/kafka"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformobjectstore "github.com/Avv123/pulselens-platform/objectstore"
+	platformpostgres "github.com/Avv123/pulselens-platform/postgres"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
+	telemetrymodels "github.com/Avv123/pulselens-processing-service/internal/telemetry/models"
+	"github.com/Avv123/pulselens-processing-service/pkg/archive"
+	"github.com/Avv123/pulselens-processing-service/pkg/cache"
+	serviceclickhouse "github.com/Avv123/pulselens-processing-service/pkg/clickhouse"
+	"github.com/Avv123/pulselens-processing-service/pkg/postgres"
+	"github.com/Avv123/pulselens-processing-service/pkg/producer"
 )
 
 func Initialize(ctx context.Context) {

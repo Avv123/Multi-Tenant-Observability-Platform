@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"github.com/omniful/pulselens-platform/netutil"
+	"github.com/Avv123/pulselens-platform/netutil"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

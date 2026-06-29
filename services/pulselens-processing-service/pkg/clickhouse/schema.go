@@ -3,7 +3,7 @@ package clickhouse
 import (
 	"context"
 
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
 )
 
 func EnsureTelemetrySchema(ctx context.Context, client *platformclickhouse.Client) error {

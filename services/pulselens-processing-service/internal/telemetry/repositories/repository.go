@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/omniful/pulselens-platform/idgen"
-	"github.com/omniful/pulselens-processing-service/internal/telemetry/models"
+	"github.com/Avv123/pulselens-platform/idgen"
+	"github.com/Avv123/pulselens-processing-service/internal/telemetry/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

@@ -1,6 +1,6 @@
 package controllers
 
-import "github.com/omniful/pulselens-platform/errs"
+import "github.com/Avv123/pulselens-platform/errs"
 
 func statusCode(code errs.Code) int {
 	switch code {

@@ -1,12 +1,12 @@
-module github.com/omniful/pulselens-alerting-service
+module github.com/Avv123/pulselens-alerting-service
 
 go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/omniful/pulselens-common v0.0.0
-	github.com/omniful/pulselens-platform v0.0.0
+	github.com/Avv123/pulselens-common v0.0.0
+	github.com/Avv123/pulselens-platform v0.0.0
 	gorm.io/driver/postgres v1.4.5
 	gorm.io/gorm v1.24.2
 )
@@ -89,6 +89,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/omniful/pulselens-common => ../../libs/pulselens-common
+replace github.com/Avv123/pulselens-common => ../../libs/pulselens-common
 
-replace github.com/omniful/pulselens-platform => ../../libs/pulselens-platform
+replace github.com/Avv123/pulselens-platform => ../../libs/pulselens-platform

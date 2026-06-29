@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/omniful/pulselens-processing-service/internal/telemetry/models"
+	"github.com/Avv123/pulselens-processing-service/internal/telemetry/models"
 )
 
 func (r *Repository) CreateCleanupRun(ctx context.Context, row *models.CleanupRun) error {

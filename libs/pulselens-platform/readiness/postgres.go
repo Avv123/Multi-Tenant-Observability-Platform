@@ -3,7 +3,7 @@ package readiness
 import (
 	"context"
 
-	platformpostgres "github.com/omniful/pulselens-platform/postgres"
+	platformpostgres "github.com/Avv123/pulselens-platform/postgres"
 )
 
 func CheckPostgres(ctx context.Context, dsn string) error {

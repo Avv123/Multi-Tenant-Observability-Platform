@@ -1,6 +1,6 @@
 package requests
 
-import "github.com/omniful/pulselens-tenant-service/internal/tenants/models"
+import "github.com/Avv123/pulselens-tenant-service/internal/tenants/models"
 
 type CreateTenantRequest struct {
 	Name          string            `json:"name" validate:"required"`

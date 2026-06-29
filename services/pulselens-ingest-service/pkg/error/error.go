@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/omniful/pulselens-platform/errs"
-	platformresponse "github.com/omniful/pulselens-platform/response"
+	"github.com/Avv123/pulselens-platform/errs"
+	platformresponse "github.com/Avv123/pulselens-platform/response"
 )
 
 const (

@@ -3,15 +3,15 @@ package appinit
 import (
 	"context"
 
-	platformclickhouse "github.com/omniful/pulselens-platform/clickhouse"
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/logging"
-	platformpostgres "github.com/omniful/pulselens-platform/postgres"
-	platformredis "github.com/omniful/pulselens-platform/redis"
-	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
-	queryclickhouse "github.com/omniful/pulselens-query-service/pkg/clickhouse"
-	"github.com/omniful/pulselens-query-service/pkg/postgres"
-	queryredis "github.com/omniful/pulselens-query-service/pkg/redis"
+	platformclickhouse "github.com/Avv123/pulselens-platform/clickhouse"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformpostgres "github.com/Avv123/pulselens-platform/postgres"
+	platformredis "github.com/Avv123/pulselens-platform/redis"
+	observabilitymodels "github.com/Avv123/pulselens-query-service/internal/observability/models"
+	queryclickhouse "github.com/Avv123/pulselens-query-service/pkg/clickhouse"
+	"github.com/Avv123/pulselens-query-service/pkg/postgres"
+	queryredis "github.com/Avv123/pulselens-query-service/pkg/redis"
 )
 
 func Initialize(ctx context.Context) {

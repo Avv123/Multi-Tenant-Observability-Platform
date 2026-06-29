@@ -7,15 +7,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/omniful/pulselens-platform/config"
-	"github.com/omniful/pulselens-platform/httpserver"
-	"github.com/omniful/pulselens-platform/idgen"
-	"github.com/omniful/pulselens-platform/logging"
-	platformruntime "github.com/omniful/pulselens-platform/runtime"
-	appinit "github.com/omniful/pulselens-processing-service/init"
-	telemetryworkers "github.com/omniful/pulselens-processing-service/internal/telemetry/workers"
-	processingcache "github.com/omniful/pulselens-processing-service/pkg/cache"
-	"github.com/omniful/pulselens-processing-service/router"
+	"github.com/Avv123/pulselens-platform/config"
+	"github.com/Avv123/pulselens-platform/httpserver"
+	"github.com/Avv123/pulselens-platform/idgen"
+	"github.com/Avv123/pulselens-platform/logging"
+	platformruntime "github.com/Avv123/pulselens-platform/runtime"
+	appinit "github.com/Avv123/pulselens-processing-service/init"
+	telemetryworkers "github.com/Avv123/pulselens-processing-service/internal/telemetry/workers"
+	processingcache "github.com/Avv123/pulselens-processing-service/pkg/cache"
+	"github.com/Avv123/pulselens-processing-service/router"
 )
 
 func main() {
