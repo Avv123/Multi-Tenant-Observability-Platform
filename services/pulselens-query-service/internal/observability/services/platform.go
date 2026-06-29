@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	platformbackpressure "github.com/omniful/pulselens-platform/backpressure"
 	"github.com/omniful/pulselens-platform/config"
 	platformkafka "github.com/omniful/pulselens-platform/kafka"
 	platformobjectstore "github.com/omniful/pulselens-platform/objectstore"
@@ -20,11 +19,6 @@ import (
 
 func (s *Service) PlatformRuntime(ctx context.Context) ([]platformruntime.Heartbeat, error) {
 	return platformruntime.List(ctx, queryredis.Get())
-}
-
-func (s *Service) PlatformBackpressure(ctx context.Context) ([]platformbackpressure.SnapshotRow, error) {
-	controller := platformbackpressure.New(queryredis.Get(), "queue:pending")
-	return controller.Snapshot(ctx, queueThresholds())
 }
 
 func (s *Service) CleanupRuns(ctx context.Context, limit int) ([]observabilitymodels.CleanupRun, error) {
@@ -91,14 +85,7 @@ func (s *Service) KafkaLag(ctx context.Context) ([]observabilityresponses.KafkaL
 	return result, nil
 }
 
-func queueThresholds() map[string]int64 {
-	return map[string]int64{
-		config.GetString("kafka.topics.logs"):    config.GetInt64("backpressure.logsMaxPending"),
-		config.GetString("kafka.topics.metrics"): config.GetInt64("backpressure.metricsMaxPending"),
-		config.GetString("kafka.topics.traces"):  config.GetInt64("backpressure.tracesMaxPending"),
-		config.GetString("kafka.topics.custom"):  config.GetInt64("backpressure.customMaxPending"),
-	}
-}
+
 
 func freshRedisPing(ctx context.Context) error {
 	hosts := config.GetStringSlice("redis.hosts")

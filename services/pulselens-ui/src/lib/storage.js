@@ -25,21 +25,33 @@ export function loadConfig() {
 
 /** Persist non-sensitive config to localStorage. */
 export function saveConfig(config) {
-  const { token, ...safe } = config; // never persist token here
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(safe));
+  try {
+    const { token, ...safe } = config; // never persist token here
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(safe));
+  } catch (err) {
+    console.warn("Storage access restricted, safe config not saved:", err);
+  }
 }
 
 /** Read the JWT token from sessionStorage. */
 export function getToken() {
-  return sessionStorage.getItem(SESSION_KEY) || "";
+  try {
+    return sessionStorage.getItem(SESSION_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
 /** Write the JWT token to sessionStorage. */
 export function setToken(token) {
-  if (token) {
-    sessionStorage.setItem(SESSION_KEY, token);
-  } else {
-    sessionStorage.removeItem(SESSION_KEY);
+  try {
+    if (token) {
+      sessionStorage.setItem(SESSION_KEY, token);
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  } catch (err) {
+    console.warn("Storage access restricted, session token not saved:", err);
   }
 }
 
@@ -54,4 +66,5 @@ export function saveState(state) {
   saveConfig(config);
   setToken(token);
 }
+
 

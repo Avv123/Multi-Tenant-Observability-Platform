@@ -22,6 +22,7 @@ type clickhouseLogRow struct {
 	Severity     string `json:"severity"`
 	Message      string `json:"message"`
 	TraceID      string `json:"trace_id"`
+	Payload      string `json:"payload"`
 	OccurredAtMS int64  `json:"occurred_at_ms"`
 }
 
@@ -52,7 +53,28 @@ type clickhouseTraceSpanRow struct {
 	Status       string `json:"status"`
 	ServiceName  string `json:"service_name"`
 	Environment  string `json:"environment"`
+	DurationMS   int64  `json:"duration_ms"`
+	Payload      string `json:"payload"`
 	OccurredAtMS int64  `json:"occurred_at_ms"`
+}
+
+type clickhouseTransactionRow struct {
+	ServiceName     string `json:"service_name"`
+	Operation       string `json:"operation"`
+	TotalCalls      uint64 `json:"total_calls"`
+	TotalErrors     uint64 `json:"total_errors"`
+	TotalDurationMS int64  `json:"sum_duration_ms"` // alias differs from column to avoid CH 24.x nested-agg error
+	MaxDurationMS   int64  `json:"max_duration_ms"`
+}
+
+type clickhouseErrorGroupRow struct {
+	ServiceName  string `json:"service_name"`
+	Severity     string `json:"severity"`
+	Title        string `json:"title"`
+	Occurrences  int64  `json:"occurrences"`
+	FirstSeenMS  int64  `json:"first_seen_at_ms"`
+	LastSeenMS   int64  `json:"last_seen_at_ms"`
+	SampleTraces string `json:"sample_trace_ids"`
 }
 
 type clickhouseServiceHealthRow struct {
@@ -101,26 +123,26 @@ type clickhouseTraceLatencyRollupRow struct {
 }
 
 func (r *Repository) countLogsCH(ctx context.Context, tenantID string) (int64, error) {
-	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT coalesce(sum(event_count), 0) AS count FROM telemetry_rollup_minutes WHERE tenant_id = '%s' AND event_type = 'log'", escapeLiteral(tenantID)))
+	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT coalesce(sum(event_count), 0) AS count FROM pulselens.telemetry_rollup_minutes WHERE tenant_id = '%s' AND event_type = 'log'", escapeLiteral(tenantID)))
 }
 
 func (r *Repository) countMetricsCH(ctx context.Context, tenantID string) (int64, error) {
-	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT coalesce(sum(event_count), 0) AS count FROM telemetry_rollup_minutes WHERE tenant_id = '%s' AND event_type = 'metric'", escapeLiteral(tenantID)))
+	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT coalesce(sum(event_count), 0) AS count FROM pulselens.telemetry_rollup_minutes WHERE tenant_id = '%s' AND event_type = 'metric'", escapeLiteral(tenantID)))
 }
 
 func (r *Repository) countTraceSpansCH(ctx context.Context, tenantID string) (int64, error) {
-	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT coalesce(sum(event_count), 0) AS count FROM telemetry_rollup_minutes WHERE tenant_id = '%s' AND event_type = 'trace'", escapeLiteral(tenantID)))
+	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT coalesce(sum(event_count), 0) AS count FROM pulselens.telemetry_rollup_minutes WHERE tenant_id = '%s' AND event_type = 'trace'", escapeLiteral(tenantID)))
 }
 
 func (r *Repository) countServicesCH(ctx context.Context, tenantID string) (int64, error) {
-	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT uniq(service_id) AS count FROM service_health_rollup_minutes WHERE tenant_id = '%s'", escapeLiteral(tenantID)))
+	return r.countFromClickHouse(ctx, fmt.Sprintf("SELECT uniq(service_id) AS count FROM pulselens.service_health_rollup_minutes WHERE tenant_id = '%s'", escapeLiteral(tenantID)))
 }
 
 func (r *Repository) listLogsCH(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.LogRow, error) {
 	query := fmt.Sprintf(`
-		SELECT event_id, service_name, environment, severity, message, trace_id,
+		SELECT event_id, service_name, environment, severity, message, trace_id, payload,
 		       toUnixTimestamp64Milli(occurred_at) AS occurred_at_ms
-		FROM log_events
+		FROM pulselens.log_events
 		WHERE tenant_id = '%s'%s
 		ORDER BY occurred_at DESC
 		LIMIT %d OFFSET %d
@@ -140,6 +162,7 @@ func (r *Repository) listLogsCH(ctx context.Context, tenantID string, filters ob
 			Severity:    row.Severity,
 			Message:     row.Message,
 			TraceID:     row.TraceID,
+			Payload:     row.Payload,
 			OccurredAt:  fromUnixMillis(row.OccurredAtMS),
 		})
 	}
@@ -150,7 +173,7 @@ func (r *Repository) listMetricsCH(ctx context.Context, tenantID string, filters
 	query := fmt.Sprintf(`
 		SELECT event_id, service_name, environment, metric_name, value,
 		       toUnixTimestamp64Milli(occurred_at) AS occurred_at_ms
-		FROM metric_points
+		FROM pulselens.metric_points
 		WHERE tenant_id = '%s'%s
 		ORDER BY occurred_at DESC
 		LIMIT %d OFFSET %d
@@ -181,7 +204,7 @@ func (r *Repository) listTracesCH(ctx context.Context, tenantID string, filters 
 		       count() AS span_count,
 		       toUnixTimestamp64Milli(min(occurred_at)) AS first_seen_at_ms,
 		       toUnixTimestamp64Milli(max(occurred_at)) AS last_seen_at_ms
-		FROM trace_spans
+		FROM pulselens.trace_spans
 		WHERE tenant_id = '%s'%s
 		GROUP BY trace_id
 		ORDER BY last_seen_at_ms DESC
@@ -210,8 +233,9 @@ func (r *Repository) listTracesCH(ctx context.Context, tenantID string, filters 
 func (r *Repository) traceDetailCH(ctx context.Context, tenantID string, traceID string) ([]observabilityresponses.TraceSpanRow, error) {
 	query := fmt.Sprintf(`
 		SELECT event_id, trace_id, span_id, parent_span_id, operation, status, service_name, environment,
+		       duration_ms, payload,
 		       toUnixTimestamp64Milli(occurred_at) AS occurred_at_ms
-		FROM trace_spans
+		FROM pulselens.trace_spans
 		WHERE tenant_id = '%s' AND trace_id = '%s'
 		ORDER BY occurred_at ASC
 	`, escapeLiteral(tenantID), escapeLiteral(traceID))
@@ -232,7 +256,112 @@ func (r *Repository) traceDetailCH(ctx context.Context, tenantID string, traceID
 			Status:       row.Status,
 			ServiceName:  row.ServiceName,
 			Environment:  row.Environment,
+			DurationMS:   row.DurationMS,
+			Payload:      row.Payload,
 			OccurredAt:   fromUnixMillis(row.OccurredAtMS),
+		})
+	}
+	return result, nil
+}
+
+func (r *Repository) listTransactionsCH(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.TransactionRow, error) {
+	serviceClause := ""
+	if filters.ServiceName != "" {
+		serviceClause = fmt.Sprintf(" AND lower(service_name) LIKE lower('%%%s%%')", escapeLiteral(filters.ServiceName))
+	}
+	timeClause := ""
+	if !filters.StartTime.IsZero() {
+		timeClause += fmt.Sprintf(" AND bucket_start >= toDateTime64('%s', 3, 'UTC')", filters.StartTime.UTC().Format("2006-01-02 15:04:05.000"))
+	}
+	// Each row in trace_latency_rollup_minutes represents exactly one span (span_count=1).
+	// Use count() / countIf() to avoid ILLEGAL_AGGREGATION in ClickHouse 24.x.
+	// Use a different alias (sum_duration_ms) so it doesn't clash with the source column
+	// name total_duration_ms, which would confuse the query planner.
+	query := fmt.Sprintf(`
+		SELECT
+			any(service_name)          AS service_name,
+			operation,
+			count()                    AS total_calls,
+			countIf(error_count > 0)   AS total_errors,
+			sum(total_duration_ms)     AS sum_duration_ms,
+			max(max_duration_ms)       AS max_duration_ms
+		FROM pulselens.trace_latency_rollup_minutes
+		WHERE tenant_id = '%s'%s%s
+		GROUP BY operation
+		ORDER BY count() DESC
+		LIMIT %d
+	`, escapeLiteral(tenantID), serviceClause, timeClause, filters.Limit)
+
+	rows, err := platformclickhouse.Select[clickhouseTransactionRow](ctx, r.ch, query)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]observabilityresponses.TransactionRow, 0, len(rows))
+	for _, row := range rows {
+		var avgMS float64
+		if row.TotalCalls > 0 {
+			avgMS = float64(row.TotalDurationMS) / float64(row.TotalCalls)
+		}
+		var errorPct float64
+		if row.TotalCalls > 0 {
+			errorPct = float64(row.TotalErrors) / float64(row.TotalCalls) * 100
+		}
+		result = append(result, observabilityresponses.TransactionRow{
+			ServiceName:   row.ServiceName,
+			Operation:     row.Operation,
+			TotalCalls:    int64(row.TotalCalls),
+			TotalErrors:   int64(row.TotalErrors),
+			AvgDurationMS: avgMS,
+			MaxDurationMS: row.MaxDurationMS,
+			ErrorPct:      errorPct,
+		})
+	}
+	return result, nil
+}
+
+func (r *Repository) listErrorGroupsCH(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.ErrorGroupRow, error) {
+	serviceClause := ""
+	if filters.ServiceName != "" {
+		serviceClause = fmt.Sprintf(" AND lower(service_name) LIKE lower('%%%s%%')", escapeLiteral(filters.ServiceName))
+	}
+	lookback := "7 DAY"
+	if !filters.StartTime.IsZero() {
+		lookback = fmt.Sprintf("0 SECOND' AND occurred_at >= toDateTime64('%s', 3, 'UTC') -- ", filters.StartTime.UTC().Format("2006-01-02 15:04:05.000"))
+	}
+	query := fmt.Sprintf(`
+		SELECT
+			service_name,
+			severity,
+			substring(message, 1, 120)                       AS title,
+			count()                                          AS occurrences,
+			toUnixTimestamp64Milli(min(occurred_at))         AS first_seen_at_ms,
+			toUnixTimestamp64Milli(max(occurred_at))         AS last_seen_at_ms,
+			arrayStringConcat(groupUniqArray(5)(trace_id), ',') AS sample_trace_ids
+		FROM pulselens.log_events
+		WHERE tenant_id = '%s'
+		  AND severity IN ('error', 'critical', 'warn')%s
+		  AND occurred_at >= now() - INTERVAL %s
+		GROUP BY service_name, severity, title
+		ORDER BY occurrences DESC
+		LIMIT %d
+	`, escapeLiteral(tenantID), serviceClause, lookback, filters.Limit)
+
+	rows, err := platformclickhouse.Select[clickhouseErrorGroupRow](ctx, r.ch, query)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]observabilityresponses.ErrorGroupRow, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, observabilityresponses.ErrorGroupRow{
+			ServiceName:    row.ServiceName,
+			Severity:       row.Severity,
+			Title:          row.Title,
+			Occurrences:    row.Occurrences,
+			FirstSeenAt:    fromUnixMillis(row.FirstSeenMS),
+			LastSeenAt:     fromUnixMillis(row.LastSeenMS),
+			SampleTraceIDs: strings.Split(row.SampleTraces, ","),
 		})
 	}
 	return result, nil
@@ -250,7 +379,7 @@ func (r *Repository) listServiceHealthCH(ctx context.Context, tenantID string, l
 			sum(critical_log_count) AS critical_log_count,
 			toUnixTimestamp64Milli(maxOrNull(latest_metric_at)) AS latest_metric_at_ms,
 			toUnixTimestamp64Milli(maxOrNull(latest_trace_at)) AS latest_trace_at_ms
-		FROM service_health_rollup_minutes
+		FROM pulselens.service_health_rollup_minutes
 		WHERE tenant_id = '%s'
 		GROUP BY service_id
 		ORDER BY last_event_at_ms DESC
@@ -290,7 +419,7 @@ func (r *Repository) listLogSeverityRollupsCH(ctx context.Context, tenantID stri
 			severity,
 			toUnixTimestamp64Milli(bucket_start) AS bucket_start_ms,
 			sum(event_count) AS event_count
-		FROM log_severity_rollup_minutes
+		FROM pulselens.log_severity_rollup_minutes
 		WHERE tenant_id = '%s'%s
 		GROUP BY service_id, environment, severity, bucket_start
 		ORDER BY bucket_start DESC, service_name ASC, severity ASC
@@ -326,7 +455,7 @@ func (r *Repository) listMetricSeriesCH(ctx context.Context, tenantID string, fi
 			min(min_value) AS min_value,
 			max(max_value) AS max_value,
 			argMax(last_value, last_event_at) AS last_value
-		FROM metric_rollup_minutes
+		FROM pulselens.metric_rollup_minutes
 		WHERE tenant_id = '%s'%s
 		GROUP BY service_id, environment, metric_name, bucket_start
 		ORDER BY bucket_start DESC, metric_name ASC
@@ -369,7 +498,7 @@ func (r *Repository) listTraceLatencyRollupsCH(ctx context.Context, tenantID str
 			sum(error_count) AS error_count,
 			sum(total_duration_ms) AS total_duration_ms,
 			max(max_duration_ms) AS max_duration_ms
-		FROM trace_latency_rollup_minutes
+		FROM pulselens.trace_latency_rollup_minutes
 		WHERE tenant_id = '%s'%s
 		GROUP BY service_id, environment, operation, bucket_start
 		ORDER BY bucket_start DESC, service_name ASC, operation ASC
@@ -413,6 +542,10 @@ func baseTelemetryClauses(filters observabilityrequests.Filters, timeColumn stri
 	if filters.ServiceID != "" {
 		clauses = append(clauses, fmt.Sprintf("service_id = '%s'", escapeLiteral(filters.ServiceID)))
 	}
+	// Allow human-readable service name search (case-insensitive substring match)
+	if filters.ServiceName != "" {
+		clauses = append(clauses, fmt.Sprintf("lower(service_name) LIKE lower('%%%s%%')", escapeLiteral(filters.ServiceName)))
+	}
 	if filters.Environment != "" {
 		clauses = append(clauses, fmt.Sprintf("environment = '%s'", escapeLiteral(filters.Environment)))
 	}
@@ -442,7 +575,8 @@ func logFilterClause(filters observabilityrequests.Filters) string {
 func metricFilterClause(filters observabilityrequests.Filters) string {
 	clauses := baseTelemetryClauses(filters, "occurred_at")
 	if filters.MetricName != "" {
-		clauses = append(clauses, fmt.Sprintf("metric_name = '%s'", escapeLiteral(filters.MetricName)))
+		// Partial case-insensitive search — allows typing "uptime" to match "analytics_uptime_seconds"
+		clauses = append(clauses, fmt.Sprintf("lower(metric_name) LIKE lower('%%%s%%')", escapeLiteral(filters.MetricName)))
 	}
 	return joinClauses(clauses)
 }
@@ -466,7 +600,7 @@ func logRollupFilterClause(filters observabilityrequests.Filters) string {
 func metricRollupFilterClause(filters observabilityrequests.Filters) string {
 	clauses := baseTelemetryClauses(filters, "bucket_start")
 	if filters.MetricName != "" {
-		clauses = append(clauses, fmt.Sprintf("metric_name = '%s'", escapeLiteral(filters.MetricName)))
+		clauses = append(clauses, fmt.Sprintf("lower(metric_name) LIKE lower('%%%s%%')", escapeLiteral(filters.MetricName)))
 	}
 	return joinClauses(clauses)
 }
@@ -484,8 +618,115 @@ func joinClauses(clauses []string) string {
 }
 
 func escapeLiteral(value string) string {
-	replacer := strings.NewReplacer(`\`, `\\`, `'`, `\'`)
+	replacer := strings.NewReplacer(`\`, `\\`, `'`, `\''`)
 	return replacer.Replace(value)
+}
+
+// ─── Service Topology ─────────────────────────────────────────────────────────
+
+type TopologyEdge struct {
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	CallCount int64  `json:"call_count"`
+}
+
+type TopologyNode struct {
+	ServiceName  string  `json:"service_name"`
+	TotalCalls   int64   `json:"total_calls"`
+	ErrorRate    float64 `json:"error_rate"`
+	AvgLatencyMS float64 `json:"avg_latency_ms"`
+}
+
+type ServiceTopology struct {
+	Nodes []TopologyNode `json:"nodes"`
+	Edges []TopologyEdge `json:"edges"`
+}
+
+func (r *Repository) serviceTopologyCH(ctx context.Context, tenantID string, lookbackMinutes int) (ServiceTopology, error) {
+	if lookbackMinutes <= 0 {
+		lookbackMinutes = 60
+	}
+
+	// Step 1: Get all service nodes with their health stats
+	nodeQuery := fmt.Sprintf(`
+		SELECT
+			service_name,
+			count()                                            AS total_calls,
+			countIf(lower(status) NOT IN ('ok',''))            AS error_count,
+			avg(duration_ms)                                   AS avg_latency_ms
+		FROM pulselens.trace_spans
+		WHERE tenant_id = '%s'
+		  AND occurred_at >= now() - INTERVAL %d MINUTE
+		GROUP BY service_name
+		ORDER BY total_calls DESC
+		LIMIT 50
+	`, escapeLiteral(tenantID), lookbackMinutes)
+
+	type nodeRow struct {
+		ServiceName  string  `json:"service_name"`
+		TotalCalls   int64   `json:"total_calls"`
+		ErrorCount   int64   `json:"error_count"`
+		AvgLatencyMS float64 `json:"avg_latency_ms"`
+	}
+	nodeRows, err := platformclickhouse.Select[nodeRow](ctx, r.ch, nodeQuery)
+	if err != nil {
+		return ServiceTopology{}, err
+	}
+	nodes := make([]TopologyNode, 0, len(nodeRows))
+	for _, row := range nodeRows {
+		var errRate float64
+		if row.TotalCalls > 0 {
+			errRate = float64(row.ErrorCount) / float64(row.TotalCalls) * 100
+		}
+		nodes = append(nodes, TopologyNode{
+			ServiceName:  row.ServiceName,
+			TotalCalls:   row.TotalCalls,
+			ErrorRate:    errRate,
+			AvgLatencyMS: row.AvgLatencyMS,
+		})
+	}
+
+	// Step 2: Find edges — services that share a trace_id (caller→callee inferred by start_time order)
+	// We self-join trace_spans on trace_id where the two spans have different service names
+	edgeQuery := fmt.Sprintf(`
+		SELECT
+			a.service_name AS source,
+			b.service_name AS target,
+			count()        AS call_count
+		FROM pulselens.trace_spans a
+		JOIN pulselens.trace_spans b
+		  ON a.trace_id = b.trace_id
+		 AND a.service_name < b.service_name
+		WHERE a.tenant_id = '%s'
+		  AND a.occurred_at >= now() - INTERVAL %d MINUTE
+		  AND b.tenant_id = '%s'
+		  AND b.occurred_at >= now() - INTERVAL %d MINUTE
+		  AND a.service_name != b.service_name
+		GROUP BY source, target
+		ORDER BY call_count DESC
+		LIMIT 200
+	`, escapeLiteral(tenantID), lookbackMinutes, escapeLiteral(tenantID), lookbackMinutes)
+
+	type edgeRow struct {
+		Source    string `json:"source"`
+		Target    string `json:"target"`
+		CallCount int64  `json:"call_count"`
+	}
+	edgeRows, err := platformclickhouse.Select[edgeRow](ctx, r.ch, edgeQuery)
+	if err != nil {
+		// Edges are optional — return nodes only if edge query fails
+		return ServiceTopology{Nodes: nodes, Edges: []TopologyEdge{}}, nil
+	}
+	edges := make([]TopologyEdge, 0, len(edgeRows))
+	for _, row := range edgeRows {
+		edges = append(edges, TopologyEdge{
+			Source:    row.Source,
+			Target:    row.Target,
+			CallCount: row.CallCount,
+		})
+	}
+
+	return ServiceTopology{Nodes: nodes, Edges: edges}, nil
 }
 
 func fromUnixMillis(value int64) time.Time {

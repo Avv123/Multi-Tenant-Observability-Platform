@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"strings"
 	"time"
 
@@ -28,7 +27,6 @@ type Service struct {
 	quota       *quota.DailyCounter
 }
 
-var pipelineOverloaded = errors.New("pipeline overloaded")
 
 func New() *Service {
 	window := time.Duration(config.GetInt("rateLimit.windowSeconds")) * time.Second
@@ -88,27 +86,16 @@ func (s *Service) Ingest(ctx context.Context, apiKey string, request *pulsetelem
 	}
 
 	accepted := 0
-	reservedQueues, reserveErr := s.reserveQueues(ctx, request.Events)
-	if reserveErr != nil {
-		if errors.Is(reserveErr, pipelineOverloaded) {
-			return responses.IngestResponse{}, errs.New(pulselens_error.TooMany, "ingest pipeline is under backpressure")
-		}
-		return responses.IngestResponse{}, errs.New(pulselens_error.InternalServer, reserveErr.Error())
-	}
-	publishedByTopic := map[string]int64{}
 	for _, event := range request.Events {
 		envelope := buildEnvelope(resolved, event)
 		payload, marshalErr := json.Marshal(envelope)
 		if marshalErr != nil {
-			releaseUnpublished(ctx, s, reservedQueues, publishedByTopic)
 			return responses.IngestResponse{}, errs.New(pulselens_error.BadRequest, marshalErr.Error())
 		}
 		topic := topicFor(event.EventType)
 		if err = producer.Get().Publish(ctx, topic, resolved.TenantID+":"+resolved.ServiceID, payload); err != nil {
-			releaseUnpublished(ctx, s, reservedQueues, publishedByTopic)
 			return responses.IngestResponse{}, errs.New(pulselens_error.InternalServer, err.Error())
 		}
-		publishedByTopic[topic]++
 		accepted++
 	}
 
@@ -120,23 +107,10 @@ func (s *Service) Ingest(ctx context.Context, apiKey string, request *pulsetelem
 	}, errs.CustomError{}
 }
 
-func releaseUnpublished(ctx context.Context, service *Service, reserved map[string]int64, published map[string]int64) {
-	toRelease := make(map[string]int64)
-	for topic, amount := range reserved {
-		if amount > published[topic] {
-			toRelease[topic] = amount - published[topic]
-		}
-	}
-	service.releaseQueues(ctx, toRelease)
-}
-
-func errPipelineOverloaded() error {
-	return pipelineOverloaded
-}
 
 func hasScope(scopes []pulsetenant.APIKeyScope, expected pulsetenant.APIKeyScope) bool {
 	for _, scope := range scopes {
-		if scope == expected {
+		if scope == expected || scope == "*" {
 			return true
 		}
 	}
@@ -159,12 +133,21 @@ func buildEnvelope(resolved pulsetenant.ResolvedAPIKey, event pulsetelemetry.Cli
 		schemaVersion = "v1"
 	}
 
+	// Allow services to self-declare their name via the payload.
+	// This lets multiple services share one API key while each correctly
+	// identifies itself (e.g. analytics-service, api-gateway) instead of
+	// being stamped with the key's registered service name.
+	serviceName := resolved.ServiceName
+	if nameFromPayload, ok := event.Payload["service_name"].(string); ok && strings.TrimSpace(nameFromPayload) != "" {
+		serviceName = strings.TrimSpace(nameFromPayload)
+	}
+
 	return pulsetelemetry.Envelope{
 		EventID:       eventID,
 		TenantID:      resolved.TenantID,
 		TenantName:    resolved.TenantName,
 		ServiceID:     resolved.ServiceID,
-		ServiceName:   resolved.ServiceName,
+		ServiceName:   serviceName,
 		Environment:   resolved.Environment,
 		ShardID:       sharding.BucketForKey(resolved.TenantID, config.GetInt("partitioning.shardBuckets")),
 		EventType:     event.EventType,

@@ -1,17 +1,15 @@
 package responses
 
 import (
-	platformbackpressure "github.com/omniful/pulselens-platform/backpressure"
 	platformruntime "github.com/omniful/pulselens-platform/runtime"
 	observabilitymodels "github.com/omniful/pulselens-query-service/internal/observability/models"
 )
 
 type PlatformOverview struct {
-	Runtime      []platformruntime.Heartbeat         `json:"runtime"`
-	Backpressure []platformbackpressure.SnapshotRow  `json:"backpressure"`
-	CleanupRuns  []observabilitymodels.CleanupRun    `json:"cleanup_runs"`
-	Dependencies []DependencyHealthRow               `json:"dependencies,omitempty"`
-	KafkaLag     []KafkaLagRow                       `json:"kafka_lag,omitempty"`
+	Runtime      []platformruntime.Heartbeat      `json:"runtime"`
+	CleanupRuns  []observabilitymodels.CleanupRun `json:"cleanup_runs"`
+	Dependencies []DependencyHealthRow            `json:"dependencies,omitempty"`
+	KafkaLag     []KafkaLagRow                    `json:"kafka_lag,omitempty"`
 }
 
 type DependencyHealthRow struct {

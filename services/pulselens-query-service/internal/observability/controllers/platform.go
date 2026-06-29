@@ -19,14 +19,6 @@ func (c *Controller) PlatformRuntime(ctx *gin.Context) {
 	platformresponse.Success(ctx, rows)
 }
 
-func (c *Controller) PlatformBackpressure(ctx *gin.Context) {
-	rows, err := c.service.PlatformBackpressure(ctx)
-	if err != nil {
-		platformresponse.Error(ctx, http.StatusInternalServerError, errs.New("INTERNAL_SERVER_ERROR", err.Error()))
-		return
-	}
-	platformresponse.Success(ctx, rows)
-}
 
 func (c *Controller) PlatformDependencies(ctx *gin.Context) {
 	platformresponse.Success(ctx, c.service.DependencyHealth(ctx))
@@ -47,11 +39,6 @@ func (c *Controller) PlatformOverview(ctx *gin.Context) {
 		platformresponse.Error(ctx, http.StatusInternalServerError, errs.New("INTERNAL_SERVER_ERROR", runtimeErr.Error()))
 		return
 	}
-	backpressureRows, backpressureErr := c.service.PlatformBackpressure(ctx)
-	if backpressureErr != nil {
-		platformresponse.Error(ctx, http.StatusInternalServerError, errs.New("INTERNAL_SERVER_ERROR", backpressureErr.Error()))
-		return
-	}
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 	if limit <= 0 || limit > 50 {
 		limit = 10
@@ -69,7 +56,6 @@ func (c *Controller) PlatformOverview(ctx *gin.Context) {
 	}
 	platformresponse.Success(ctx, observabilityresponses.PlatformOverview{
 		Runtime:      runtimeRows,
-		Backpressure: backpressureRows,
 		CleanupRuns:  cleanupRuns,
 		Dependencies: dependencies,
 		KafkaLag:     lagRows,

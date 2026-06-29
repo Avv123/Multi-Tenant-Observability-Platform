@@ -26,7 +26,6 @@ func New() *Service {
 
 func (s *Service) Overview(ctx context.Context, claims *commonauth.Claims) (map[string]interface{}, errs.CustomError) {
 	runtimeRows, _ := s.PlatformRuntime(ctx)
-	backpressureRows, _ := s.PlatformBackpressure(ctx)
 	cleanupRuns, _ := s.CleanupRuns(ctx, 5)
 	logCount, err := cachedValueWithError(ctx, cacheKey(ctx, "overview:log_count", claims.TenantID, cacheversion.ScopeTelemetryOverview, map[string]any{"tenant_id": claims.TenantID}), func() (int64, error) {
 		return s.repository.CountLogs(ctx, claims.TenantID)
@@ -75,7 +74,6 @@ func (s *Service) Overview(ctx context.Context, claims *commonauth.Claims) (map[
 		"latest_metrics": latestMetrics,
 		"usage":          s.repository.ListUsage(ctx, claims.TenantID, 20),
 		"runtime":        runtimeRows,
-		"backpressure":   backpressureRows,
 		"cleanup_runs":   cleanupRuns,
 	}, errs.CustomError{}
 }
@@ -312,4 +310,48 @@ func (s *Service) TraceLatencySeries(ctx context.Context, claims *commonauth.Cla
 		return nil, telemetryUnavailableError(err)
 	}
 	return rows, errs.CustomError{}
+}
+
+func (s *Service) ListTransactions(ctx context.Context, claims *commonauth.Claims, filters observabilityrequests.Filters) ([]interface{}, errs.CustomError) {
+	rows, err := cachedValueWithError(ctx, cacheKey(ctx, "transactions", claims.TenantID, cacheversion.ScopeTraceAnalytics, map[string]any{"tenant_id": claims.TenantID, "filters": filters}), func() ([]interface{}, error) {
+		typedRows, listErr := s.repository.ListTransactions(ctx, claims.TenantID, filters)
+		if listErr != nil {
+			return nil, listErr
+		}
+		result := make([]interface{}, 0, len(typedRows))
+		for _, row := range typedRows {
+			result = append(result, row)
+		}
+		return result, nil
+	})
+	if err != nil {
+		return nil, telemetryUnavailableError(err)
+	}
+	return rows, errs.CustomError{}
+}
+
+func (s *Service) ListErrorGroups(ctx context.Context, claims *commonauth.Claims, filters observabilityrequests.Filters) ([]interface{}, errs.CustomError) {
+	rows, err := cachedValueWithError(ctx, cacheKey(ctx, "error_groups", claims.TenantID, cacheversion.ScopeLogs, map[string]any{"tenant_id": claims.TenantID, "filters": filters}), func() ([]interface{}, error) {
+		typedRows, listErr := s.repository.ListErrorGroups(ctx, claims.TenantID, filters)
+		if listErr != nil {
+			return nil, listErr
+		}
+		result := make([]interface{}, 0, len(typedRows))
+		for _, row := range typedRows {
+			result = append(result, row)
+		}
+		return result, nil
+	})
+	if err != nil {
+		return nil, telemetryUnavailableError(err)
+	}
+	return rows, errs.CustomError{}
+}
+
+func (s *Service) GetServiceMap(ctx context.Context, claims *commonauth.Claims, lookbackMinutes int) (observabilityrepositories.ServiceTopology, errs.CustomError) {
+	topology, err := s.repository.GetServiceMap(ctx, claims.TenantID, lookbackMinutes)
+	if err != nil {
+		return observabilityrepositories.ServiceTopology{}, telemetryUnavailableError(err)
+	}
+	return topology, errs.CustomError{}
 }

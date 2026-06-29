@@ -9,6 +9,7 @@ type LogRow struct {
 	Severity    string    `json:"severity"`
 	Message     string    `json:"message"`
 	TraceID     string    `json:"trace_id"`
+	Payload     string    `json:"payload"`
 	OccurredAt  time.Time `json:"occurred_at"`
 }
 
@@ -39,7 +40,29 @@ type TraceSpanRow struct {
 	Status       string    `json:"status"`
 	ServiceName  string    `json:"service_name"`
 	Environment  string    `json:"environment"`
+	DurationMS   int64     `json:"duration_ms"`
+	Payload      string    `json:"payload"` // raw JSON blob from ClickHouse, decoded client-side
 	OccurredAt   time.Time `json:"occurred_at"`
+}
+
+type TransactionRow struct {
+	ServiceName   string  `json:"service_name"`
+	Operation     string  `json:"operation"`
+	TotalCalls    int64   `json:"total_calls"`
+	TotalErrors   int64   `json:"total_errors"`
+	AvgDurationMS float64 `json:"avg_duration_ms"`
+	MaxDurationMS int64   `json:"max_duration_ms"`
+	ErrorPct      float64 `json:"error_pct"`
+}
+
+type ErrorGroupRow struct {
+	ServiceName    string    `json:"service_name"`
+	Severity       string    `json:"severity"`
+	Title          string    `json:"title"`
+	Occurrences    int64     `json:"occurrences"`
+	FirstSeenAt    time.Time `json:"first_seen_at"`
+	LastSeenAt     time.Time `json:"last_seen_at"`
+	SampleTraceIDs []string  `json:"sample_trace_ids"`
 }
 
 type UsageRow struct {

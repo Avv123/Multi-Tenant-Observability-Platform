@@ -142,16 +142,6 @@ export const queryApi = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
-  metrics(token) {
-    return request("query", "/api/v1/metrics", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  },
-  traces(token) {
-    return request("query", "/api/v1/traces", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  },
   metricsWithFilters(token, filters = {}) {
     return request("query", `/api/v1/metrics${buildQueryString(filters)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -164,6 +154,26 @@ export const queryApi = {
   },
   traceDetail(token, traceId) {
     return request("query", `/api/v1/traces/${traceId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  transactions(token, filters = {}) {
+    return request("query", `/api/v1/transactions${buildQueryString(filters)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  errorGroups(token, filters = {}) {
+    return request("query", `/api/v1/errors/groups${buildQueryString(filters)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  correlatedLogs(token, traceId, lookback = 120) {
+    return request("query", `/api/v1/logs${buildQueryString({ trace_id: traceId, lookback_minutes: lookback, limit: 50 })}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  serviceMap(token, lookbackMinutes = 60) {
+    return request("query", `/api/v1/service-map${buildQueryString({ lookback_minutes: lookbackMinutes })}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   },

@@ -8,6 +8,8 @@ export default function LineChart({ data = [], color = "var(--primary-2)" }) {
   const ty = v => H - ((v-min)/range)*(H-10) - 5;
   const pts = data.map((d,i) => `${tx(i)},${ty(d.value)}`).join(" ");
   const id = `lg${Math.random().toString(36).slice(2,8)}`;
+  // Show at most 6 labels — thin them out to prevent concatenation overflow
+  const step = Math.max(1, Math.ceil(data.length / 6));
   return (
     <div className="chart-wrap">
       <svg className="chart-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
@@ -28,8 +30,14 @@ export default function LineChart({ data = [], color = "var(--primary-2)" }) {
         ))}
       </svg>
       <div className="chart-labels" style={{gridTemplateColumns:`repeat(${data.length},1fr)`}}>
-        {data.map((d,i) => <span key={i} className="truncate" title={d.label}>{d.label}</span>)}
+        {data.map((d,i) => (
+          <span key={i} style={{
+            overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis",
+            visibility: i % step === 0 ? "visible" : "hidden"
+          }} title={d.label}>{d.label}</span>
+        ))}
       </div>
     </div>
   );
 }
+

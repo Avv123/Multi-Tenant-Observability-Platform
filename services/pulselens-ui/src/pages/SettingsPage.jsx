@@ -17,15 +17,19 @@ export default function SettingsPage({ state, notify, setState }) {
   const { data: users,     loading: usersLoading,  refetch: refetchUsers  } = useAsyncData(() => tenantApi.listUsers(tenantId, token),    [token, tenantId], { skip: !token || !tenantId });
   const { data: apiKeys,   loading: keysLoading,   refetch: refetchKeys   } = useAsyncData(() => tenantApi.listAPIKeys(token),             [token],           { skip: !token });
   const { data: auditLogs, loading: auditLoading                           } = useAsyncData(() => tenantApi.listAuditLogs(tenantId, token), [token, tenantId], { skip: !token || !tenantId });
-  const { data: services,  loading: servicesLoading                        } = useAsyncData(() => tenantApi.listServices(tenantId, token), [token, tenantId], { skip: !token || !tenantId });
+  const { data: services,  loading: servicesLoading, refetch: refetchServices } = useAsyncData(() => tenantApi.listServices(tenantId, token), [token, tenantId], { skip: !token || !tenantId });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [keyDrawerOpen, setKeyDrawerOpen] = useState(false);
+  const [serviceDrawerOpen, setServiceDrawerOpen] = useState(false);
   const [userForm,   setUserForm]   = useState({ name: "", email: "", password: "", role: "viewer" });
   const [keyForm,    setKeyForm]    = useState({ name: "", scope: "ingest", serviceId: "" });
+  const [serviceForm, setServiceForm] = useState({ name: "", environment: "production" });
   const [creating,   setCreating]   = useState(false);
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState("");
   const uf = (k, v) => setUserForm(p => ({ ...p, [k]: v }));
   const kf = (k, v) => setKeyForm(p => ({ ...p, [k]: v }));
+  const sf = (k, v) => setServiceForm(p => ({ ...p, [k]: v }));
 
   async function handleCreateUser(e) {
     e?.preventDefault();
@@ -58,7 +62,7 @@ export default function SettingsPage({ state, notify, setState }) {
           svcId = services[0].id;
         } else {
           // Create a default service if none exist
-          const newSvc = await tenantApi.createService(tenantId, { name: "default-service", type: "app" }, token);
+          const newSvc = await tenantApi.createService(tenantId, { name: "default-service", environment: "production" }, token);
           svcId = newSvc.id;
         }
       }
@@ -76,8 +80,21 @@ export default function SettingsPage({ state, notify, setState }) {
       }
       notify(`Key "${keyForm.name}" created for service "${svcId}".`, "success");
       setKeyForm({ name: "", scope: "ingest", serviceId: "" });
-      setKeyDrawerOpen(false);
+      setNewlyCreatedKey(rawKey);
       refetchKeys();
+    } catch (err) { notify(err.message, "error"); }
+    finally { setCreating(false); }
+  }
+  async function handleCreateService(e) {
+    e?.preventDefault();
+    if (!serviceForm.name || !serviceForm.environment) return notify("All fields required", "error");
+    setCreating(true);
+    try {
+      await tenantApi.createService(tenantId, { name: serviceForm.name, environment: serviceForm.environment }, token);
+      notify(`Service "${serviceForm.name}" registered successfully.`, "success");
+      setServiceForm({ name: "", environment: "production" });
+      setServiceDrawerOpen(false);
+      refetchServices();
     } catch (err) { notify(err.message, "error"); }
     finally { setCreating(false); }
   }
@@ -134,6 +151,42 @@ export default function SettingsPage({ state, notify, setState }) {
           ) : (
             <EmptyState icon="◎" title="No team members yet" body="Invite colleagues to share access."
               action={<button className="btn btn-primary btn-sm" onClick={() => setDrawerOpen(true)}>+ Invite User</button>} />
+          )
+        )}
+      </div>
+
+      {/* ── Registered Services ─────────────────── */}
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <div className="panel-title">Registered Services <Tooltip text="Services represent your applications (microservices, databases, collectors) that send telemetry data. API keys are linked to services for dynamic scoping and tracking." /></div>
+            <div className="panel-desc">Applications linked to this workspace</div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button className="btn btn-secondary btn-sm" onClick={refetchServices}>↺</button>
+            <button className="btn btn-primary btn-sm" id="btn-register-service" onClick={() => setServiceDrawerOpen(true)}>+ Register Service</button>
+          </div>
+        </div>
+        {servicesLoading ? <SectionLoader /> : (
+          services?.length ? (
+            <div className="table-wrap">
+              <table className="data-table" id="table-services">
+                <thead><tr><th>Name</th><th>Environment</th><th>Service ID</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {services.map(s => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 500 }}>{s.name}</td>
+                      <td><span className={`badge ${s.environment === "production" ? "badge-warning" : "badge-info"}`}>{s.environment}</span></td>
+                      <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "var(--text-2)" }}>{s.id}</td>
+                      <td style={{ color: "var(--text-3)", fontSize: "0.8rem" }}>—</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState icon="⊞" title="No services registered yet" body="Register your first application service to start ingesting logs and traces."
+              action={<button className="btn btn-primary btn-sm" onClick={() => setServiceDrawerOpen(true)}>+ Register Service</button>} />
           )
         )}
       </div>
@@ -279,39 +332,88 @@ export default function SettingsPage({ state, notify, setState }) {
       </Drawer>
 
       {/* ── Create API Key Drawer ────────────────── */}
-      <Drawer open={keyDrawerOpen} onClose={() => setKeyDrawerOpen(false)} title="Generate API Key" description="Create a new credential for telemetry ingestion or querying.">
-        <form onSubmit={handleCreateKey} style={{ display:"flex",flexDirection:"column",gap:"1.25rem" }}>
+      <Drawer open={keyDrawerOpen} onClose={() => { setKeyDrawerOpen(false); setNewlyCreatedKey(""); }} title="Generate API Key" description={newlyCreatedKey ? "Please copy your new API key secret." : "Create a new credential for telemetry ingestion or querying."}>
+        {newlyCreatedKey ? (
+          <div style={{ display:"flex", flexDirection:"column", gap:"1.25rem" }}>
+            <div style={{ padding:"1rem", borderRadius:"var(--r-sm)", background:"var(--success-soft)", border:"1px solid rgba(16,185,129,0.2)", color:"var(--success)", fontSize:"0.875rem", lineHeight:1.5 }}>
+              <strong>API Key Generated!</strong>
+              <p style={{ marginTop:"0.25rem", color:"var(--text-2)", fontSize:"0.78rem" }}>Copy this key now. For security reasons, it cannot be shown again.</p>
+            </div>
+            <div className="form-group">
+              <label className="form-label">API Key Secret</label>
+              <div style={{ display:"flex", gap:"0.5rem" }}>
+                <input className="form-input" readOnly value={newlyCreatedKey} style={{ fontFamily:"var(--font-mono)", fontSize:"0.82rem", background:"rgba(0,0,0,0.2)", flex: 1 }} />
+                <button type="button" className="btn btn-primary" onClick={() => {
+                  navigator.clipboard.writeText(newlyCreatedKey);
+                  notify("API Key copied to clipboard!", "success");
+                }}>Copy</button>
+              </div>
+            </div>
+            <div style={{ display:"flex", paddingTop:"0.5rem", borderTop:"1px solid var(--border)" }}>
+              <button type="button" className="btn btn-primary" style={{ width:"100%", justifyContent:"center" }} onClick={() => {
+                setNewlyCreatedKey("");
+                setKeyDrawerOpen(false);
+              }}>Done</button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleCreateKey} style={{ display:"flex",flexDirection:"column",gap:"1.25rem" }}>
+            <div className="form-group">
+              <label className="form-label">Key Name</label>
+              <input className="form-input" placeholder="e.g. Production Ingest" value={keyForm.name} onChange={e => kf("name", e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Scope <Tooltip text="Ingest: can send logs/traces. Query: can access the query API." /></label>
+              <select className="form-input" value={keyForm.scope} onChange={e => kf("scope", e.target.value)} style={{ appearance:"none",background:"var(--surface-active) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E\") no-repeat right 0.75rem center" }}>
+                <option value="ingest">Ingest (Logs & Traces)</option>
+                <option value="query">Query (Dashboards & CLI)</option>
+                <option value="*">Full Access (*)</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Service <Tooltip text="Link this key to a specific service for better data categorization." /></label>
+              <select className="form-input" value={keyForm.serviceId} onChange={e => kf("serviceId", e.target.value)} style={{ appearance:"none",background:"var(--surface-active) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E\") no-repeat right 0.75rem center" }}>
+                <option value="">-- Select Service (Optional) --</option>
+                {services?.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.environment})</option>
+                ))}
+              </select>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-3)", marginTop: "0.25rem" }}>
+                If no service is selected, the first available service will be used.
+              </p>
+            </div>
+            <div style={{ padding:"1rem", borderRadius:"var(--r-sm)", background:"var(--info-soft)", border:"1px solid rgba(59,130,246,0.2)", fontSize:"0.78rem", color:"var(--info)", lineHeight:1.5 }}>
+              <strong>Security Note:</strong> New keys are cached in Redis for high-performance validation. After creation, the full secret will be displayed once.
+            </div>
+            <div style={{ display:"flex",gap:"0.65rem",paddingTop:"0.5rem",borderTop:"1px solid var(--border)" }}>
+              <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={() => setKeyDrawerOpen(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" id="btn-save-key" style={{ flex:2,justifyContent:"center" }} disabled={creating}>
+                {creating ? "Generating…" : "Generate Key"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Drawer>
+      {/* ── Register Service Drawer ──────────────── */}
+      <Drawer open={serviceDrawerOpen} onClose={() => setServiceDrawerOpen(false)} title="Register Service" description="Register a new application service under this tenant workspace.">
+        <form onSubmit={handleCreateService} style={{ display:"flex",flexDirection:"column",gap:"1.25rem" }}>
           <div className="form-group">
-            <label className="form-label">Key Name</label>
-            <input className="form-input" placeholder="e.g. Production Ingest" value={keyForm.name} onChange={e => kf("name", e.target.value)} required />
+            <label className="form-label">Service Name</label>
+            <input className="form-input" placeholder="e.g. payment-gateway" value={serviceForm.name} onChange={e => sf("name", e.target.value)} required />
           </div>
           <div className="form-group">
-            <label className="form-label">Scope <Tooltip text="Ingest: can send logs/traces. Query: can access the query API." /></label>
-            <select className="form-input" value={keyForm.scope} onChange={e => kf("scope", e.target.value)} style={{ appearance:"none",background:"var(--surface-active) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E\") no-repeat right 0.75rem center" }}>
-              <option value="ingest">Ingest (Logs & Traces)</option>
-              <option value="query">Query (Dashboards & CLI)</option>
-              <option value="*">Full Access (*)</option>
+            <label className="form-label">Environment</label>
+            <select className="form-input" value={serviceForm.environment} onChange={e => sf("environment", e.target.value)} style={{ appearance:"none",background:"var(--surface-active) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E\") no-repeat right 0.75rem center" }}>
+              <option value="production">Production</option>
+              <option value="staging">Staging</option>
+              <option value="development">Development</option>
+              <option value="testing">Testing</option>
             </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Service <Tooltip text="Link this key to a specific service for better data categorization." /></label>
-            <select className="form-input" value={keyForm.serviceId} onChange={e => kf("serviceId", e.target.value)} style={{ appearance:"none",background:"var(--surface-active) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E\") no-repeat right 0.75rem center" }}>
-              <option value="">-- Select Service (Optional) --</option>
-              {services?.map(s => (
-                <option key={s.id} value={s.id}>{s.name} ({s.environment})</option>
-              ))}
-            </select>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-3)", marginTop: "0.25rem" }}>
-              If no service is selected, the first available service will be used.
-            </p>
-          </div>
-          <div style={{ padding:"1rem", borderRadius:"var(--r-sm)", background:"var(--info-soft)", border:"1px solid rgba(59,130,246,0.2)", fontSize:"0.78rem", color:"var(--info)", lineHeight:1.5 }}>
-            <strong>Security Note:</strong> New keys are cached in Redis for high-performance validation. After creation, the full secret will be displayed once.
           </div>
           <div style={{ display:"flex",gap:"0.65rem",paddingTop:"0.5rem",borderTop:"1px solid var(--border)" }}>
-            <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={() => setKeyDrawerOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary" id="btn-save-key" style={{ flex:2,justifyContent:"center" }} disabled={creating}>
-              {creating ? "Generating…" : "Generate Key"}
+            <button type="button" className="btn btn-ghost" style={{ flex:1 }} onClick={() => setServiceDrawerOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" id="btn-save-service" style={{ flex:2,justifyContent:"center" }} disabled={creating}>
+              {creating ? "Registering…" : "Register Service"}
             </button>
           </div>
         </form>

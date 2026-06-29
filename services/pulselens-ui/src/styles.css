@@ -1074,3 +1074,51 @@ select.form-input,
   from { opacity: 0; transform: scale(0.96) translateY(2px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* ─── Drawer UI Upgrades ────────────────────────────────── */
+.drawer-panel {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 58vh;
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 1000;
+  background: #0b1120; /* Solid deep space dark - absolutely opaque */
+  border-top: 1px solid var(--border-glow);
+  box-shadow: 0 -12px 42px rgba(0, 0, 0, 0.7);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(3, 7, 28, 0.65); /* Ambient dark dimming */
+  backdrop-filter: blur(5px);
+  animation: fadeInBackdrop 0.25s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInBackdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

@@ -64,7 +64,6 @@ def main():
     base_query = "http://127.0.0.1:8084"
     base_ui = "http://127.0.0.1:3000"
     base_alerting = "http://127.0.0.1:8085"
-    base_archive = "http://127.0.0.1:8086"
     webhook_port = free_port()
     capture_file = tempfile.NamedTemporaryFile(prefix="pulselens-webhook-", suffix=".jsonl", delete=False)
     capture_file.close()
@@ -81,7 +80,6 @@ def main():
             "ingest": base_ingest,
             "query": base_query,
             "alerting": base_alerting,
-            "archive": base_archive,
         }.items():
             readiness[name] = req(base + "/ready")
 
@@ -289,18 +287,6 @@ def main():
 
         time.sleep(3)
 
-        replay_job = req(
-            base_archive + "/api/v1/replay-jobs",
-            "POST",
-            {
-                "service_id": service_id,
-                "event_type": "log",
-                "start_time": "2020-01-01T00:00:00Z",
-                "end_time": "2100-01-01T00:00:00Z",
-            },
-            {"Authorization": f"Bearer {token}"},
-        )
-
         webhook_delivery = wait_until(
             lambda: os.path.getsize(capture_file.name) > 0 and open(capture_file.name, "r", encoding="utf-8").read().strip(),
             timeout_seconds=20,
@@ -363,8 +349,6 @@ def main():
         dashboards = req(base_query + "/api/v1/dashboards", headers=auth_header)
         notification_channels = req(base_alerting + "/api/v1/notification-channels", headers=auth_header)
         notification_deliveries = req(base_alerting + "/api/v1/notification-deliveries", headers=auth_header)
-        replay_jobs = req(base_archive + "/api/v1/replay-jobs", headers=auth_header)
-        archive_stats = req(base_archive + "/api/v1/archive/stats", headers=auth_header)
         audit_logs = req(base_tenant + f"/admin/api/v1/tenants/{tenant_id}/audit-logs", headers=auth_header)
         users = req(base_tenant + f"/admin/api/v1/tenants/{tenant_id}/users", headers=auth_header)
         with urllib.request.urlopen(base_ui + "/", timeout=15) as response:
@@ -397,11 +381,6 @@ def main():
                     "dashboard_count": len(dashboards["data"]),
                     "notification_channel_count": len(notification_channels["data"]),
                     "notification_delivery_count": len(notification_deliveries["data"]),
-                    "replay_job_count": len(replay_jobs["data"]),
-                    "archive_replay_job_count": archive_stats["data"]["replay_job_count"],
-                    "archive_object_count": archive_stats["data"]["archive_object_count"],
-                    "archived_event_count": archive_stats["data"]["archived_event_count"],
-                    "replay_job_id": replay_job["data"]["id"],
                     "audit_log_count": len(audit_logs["data"]),
                     "user_count": len(users["data"]),
                     "viewer_overview_role": viewer_overview["data"]["tenant_id"],

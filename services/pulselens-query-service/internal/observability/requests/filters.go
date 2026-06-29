@@ -4,6 +4,7 @@ import "time"
 
 type Filters struct {
 	ServiceID   string
+	ServiceName string
 	Environment string
 	Severity    string
 	MetricName  string
