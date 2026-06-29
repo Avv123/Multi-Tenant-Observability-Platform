@@ -8,7 +8,7 @@ log:
   request: true
   response: false
 postgres:
-  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5433 sslmode=disable"
+  dsn: "host=localhost user=pulselens password=pulselens dbname=pulselens port=5433 sslmode=disable"
 redis:
   clusterMode: false
   hosts:

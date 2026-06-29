@@ -3,13 +3,13 @@ service:
 server:
   port: "127.0.0.1:8085"
 postgres:
-  dsn: "host=localhost user=omniful password=omniful dbname=pulselens port=5433 sslmode=disable"
+  dsn: "host=localhost user=pulselens password=pulselens dbname=pulselens port=5433 sslmode=disable"
 clickhouse:
   enabled: true
   baseUrl: "http://localhost:8123"
   database: "pulselens"
-  username: "omniful"
-  password: "omniful"
+  username: "pulselens"
+  password: "pulselens"
 redis:
   hosts:
     - "localhost:6381"
