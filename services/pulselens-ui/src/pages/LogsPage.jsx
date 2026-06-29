@@ -1,16 +1,34 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { queryApi, ingestApi } from "../lib/api";
 import { useAsyncData, SectionLoader, EmptyState } from "../lib/hooks.jsx";
+import ServiceSelector from "../components/ServiceSelector";
 
 const SEV_BADGE = { error:"badge-danger", warn:"badge-warning", info:"badge-info", debug:"badge-neutral" };
 
 export default function LogsPage({ state, notify }) {
   const token = state.token;
-  const [filters, setFilters] = useState({ service_id:"", severity:"", search:"", lookback_minutes:"120" });
-  const { data: logs, loading, error, refetch } = useAsyncData(
-    () => queryApi.logsWithFilters(token, { ...filters, lookback_minutes: parseInt(filters.lookback_minutes)||120 }),
-    [token, JSON.stringify(filters)], { skip: !token }
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [filters, setFilters] = useState({ severity:"", search:"", lookback_minutes:"120" });
+  
+  const { data: rawLogs, loading, error, refetch } = useAsyncData(
+    () => {
+      const queryServiceName = selectedServices.length === 1 ? selectedServices[0] : "";
+      return queryApi.logsWithFilters(token, {
+        ...filters,
+        service_name: queryServiceName,
+        lookback_minutes: parseInt(filters.lookback_minutes) || 120
+      });
+    },
+    [token, JSON.stringify(filters), JSON.stringify(selectedServices)], { skip: !token }
   );
+
+  const logs = useMemo(() => {
+    if (!rawLogs) return [];
+    if (selectedServices.length > 1) {
+      return rawLogs.filter(row => selectedServices.includes(row.service_name));
+    }
+    return rawLogs;
+  }, [rawLogs, selectedServices]);
 
   const f = (k, v) => setFilters(p => ({ ...p, [k]: v }));
 
@@ -18,18 +36,89 @@ export default function LogsPage({ state, notify }) {
     if (!state.apiKey) {
       return notify("API Key missing! Please generate an Ingestion key in Settings first.", "error");
     }
+
+    // Realistic log scenarios across multiple services
+    const scenarios = [
+      {
+        severity: "error",
+        service_name: "api-gateway",
+        message: "Upstream timeout: analytics-service did not respond within 5000ms",
+        http_method: "POST", http_path: "/api/v1/reports/generate",
+        http_status: 504, latency_ms: 5023, user_id: `usr_${Math.random().toString(36).slice(2,8)}`,
+        request_id: `req_${Math.random().toString(36).slice(2,10)}`
+      },
+      {
+        severity: "error",
+        service_name: "analytics-service",
+        message: "MongoDB query failed: connection pool exhausted",
+        db: "analytics", collection: "report_cache",
+        error_code: "ECONNRESET", retry_attempt: 3,
+        request_id: `req_${Math.random().toString(36).slice(2,10)}`
+      },
+      {
+        severity: "warn",
+        service_name: "api-gateway",
+        message: "Rate limit approaching: tenant has used 87% of daily quota",
+        tenant_id: "tenant_demo", quota_used: 87400, quota_limit: 100000,
+        request_id: `req_${Math.random().toString(36).slice(2,10)}`
+      },
+      {
+        severity: "warn",
+        service_name: "analytics-service",
+        message: "Slow query detected: report aggregation took 3200ms",
+        query_type: "aggregation", duration_ms: 3200, collection: "events",
+        index_used: false, docs_scanned: 450000
+      },
+      {
+        severity: "info",
+        service_name: "api-gateway",
+        message: "Request completed successfully",
+        http_method: "GET", http_path: "/api/v1/analytics/dashboard",
+        http_status: 200, latency_ms: Math.floor(Math.random()*200)+50,
+        user_id: `usr_${Math.random().toString(36).slice(2,8)}`,
+        request_id: `req_${Math.random().toString(36).slice(2,10)}`
+      },
+      {
+        severity: "info",
+        service_name: "analytics-service",
+        message: "Report generation completed",
+        report_type: ["daily_sales","inventory_summary","order_fulfillment"][Math.floor(Math.random()*3)],
+        tenant_id: "tenant_demo", rows_processed: Math.floor(Math.random()*5000)+100,
+        duration_ms: Math.floor(Math.random()*1000)+200
+      },
+      {
+        severity: "debug",
+        service_name: "analytics-service",
+        message: "Cache miss — fetching from MongoDB",
+        cache_key: `report:${Math.random().toString(36).slice(2,8)}`,
+        ttl_remaining: 0, strategy: "LRU"
+      },
+      {
+        severity: "debug",
+        service_name: "api-gateway",
+        message: "JWT validation passed, forwarding to upstream",
+        upstream: "analytics-service", auth_method: "Bearer",
+        latency_ms: Math.floor(Math.random()*15)+2
+      }
+    ];
+
+    // Send 3 random realistic logs at once
+    const picks = [];
+    const used = new Set();
+    while (picks.length < 3) {
+      const idx = Math.floor(Math.random() * scenarios.length);
+      if (!used.has(idx)) { used.add(idx); picks.push(scenarios[idx]); }
+    }
+
+    const events = picks.map(s => ({
+      event_type: "log",
+      severity: s.severity,
+      payload: { ...s, environment: "production", trace_id: `tr-${Math.random().toString(36).slice(2,10)}` }
+    }));
+
     try {
-      await ingestApi.ingest(state.apiKey, [{
-        event_type: "log",
-        payload: { 
-          message: `Test event at ${new Date().toISOString()}`, 
-          severity: ["error","warn","info","debug"][Math.floor(Math.random()*4)],
-          service_name: "test-client", 
-          environment: "production",
-          trace_id: `tr-${Math.random().toString(36).slice(2,10)}` 
-        }
-      }]);
-      notify("Test log ingested", "success");
+      await ingestApi.ingest(state.apiKey, events);
+      notify(`${events.length} realistic logs ingested (${picks.map(p=>p.severity).join(", ")})`, "success");
       setTimeout(refetch, 1200);
     } catch(e) { notify(e.message, "error"); }
   }
@@ -70,7 +159,7 @@ export default function LogsPage({ state, notify }) {
           </div>
           <div className="form-group" style={{ marginBottom:0 }}>
             <label className="form-label">Service</label>
-            <input className="form-input" placeholder="service-id…" value={filters.service_id} onChange={e=>f("service_id",e.target.value)} />
+            <ServiceSelector token={token} selectedServices={selectedServices} onChange={setSelectedServices} />
           </div>
         </div>
       </div>

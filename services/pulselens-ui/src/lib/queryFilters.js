@@ -14,7 +14,7 @@ function withLimit(payload, limit) {
 
 export function buildLogFilters(filterForm) {
   return withTimeBounds(filterForm, withLimit({
-    service_id: filterForm.service_id || undefined,
+    service_name: filterForm.service_name || filterForm.service_id || undefined,
     environment: filterForm.environment || undefined,
     severity: filterForm.severity || undefined,
     search: filterForm.search || undefined,
@@ -24,7 +24,7 @@ export function buildLogFilters(filterForm) {
 
 export function buildMetricFilters(filterForm) {
   return withTimeBounds(filterForm, withLimit({
-    service_id: filterForm.service_id || undefined,
+    service_name: filterForm.service_name || filterForm.service_id || undefined,
     environment: filterForm.environment || undefined,
     metric_name: filterForm.metric_name || undefined,
   }, 20));
@@ -32,7 +32,7 @@ export function buildMetricFilters(filterForm) {
 
 export function buildTraceFilters(filterForm) {
   return withTimeBounds(filterForm, withLimit({
-    service_id: filterForm.service_id || undefined,
+    service_name: filterForm.service_name || filterForm.service_id || undefined,
     environment: filterForm.environment || undefined,
     trace_id: filterForm.trace_id || undefined,
   }, 20));

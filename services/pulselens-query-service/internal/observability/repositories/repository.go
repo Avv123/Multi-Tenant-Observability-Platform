@@ -225,6 +225,27 @@ func (r *Repository) ListTraceLatencyRollups(ctx context.Context, tenantID strin
 	return r.listTraceLatencyRollupsCH(ctx, tenantID, filters)
 }
 
+func (r *Repository) ListTransactions(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.TransactionRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
+	}
+	return r.listTransactionsCH(ctx, tenantID, filters)
+}
+
+func (r *Repository) ListErrorGroups(ctx context.Context, tenantID string, filters observabilityrequests.Filters) ([]observabilityresponses.ErrorGroupRow, error) {
+	if !r.useClickHouse() {
+		return nil, r.telemetryUnavailable()
+	}
+	return r.listErrorGroupsCH(ctx, tenantID, filters)
+}
+
+func (r *Repository) GetServiceMap(ctx context.Context, tenantID string, lookbackMinutes int) (ServiceTopology, error) {
+	if !r.useClickHouse() {
+		return ServiceTopology{}, r.telemetryUnavailable()
+	}
+	return r.serviceTopologyCH(ctx, tenantID, lookbackMinutes)
+}
+
 func (r *Repository) telemetryUnavailable() error {
 	return errors.New("clickhouse telemetry store unavailable")
 }

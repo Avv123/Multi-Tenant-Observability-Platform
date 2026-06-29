@@ -6,11 +6,15 @@ import OverviewPage from "./pages/OverviewPage";
 import LogsPage from "./pages/LogsPage";
 import MetricsPage from "./pages/MetricsPage";
 import TracesPage from "./pages/TracesPage";
+import TransactionsPage from "./pages/TransactionsPage";
+import ErrorsPage from "./pages/ErrorsPage";
 import AlertsPage from "./pages/AlertsPage";
 import IncidentsPage from "./pages/IncidentsPage";
+import ServiceMapPage from "./pages/ServiceMapPage";
 import PlatformPage from "./pages/PlatformPage";
 import SettingsPage from "./pages/SettingsPage";
 import { loadState, saveState } from "./lib/storage";
+import { tenantApi } from "./lib/api";
 
 // Decode JWT payload without a library
 function jwtRole(token) {
@@ -33,7 +37,10 @@ const Icons = {
   Search: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
   Archive: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>,
   Settings: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-  Zap: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+  Zap: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+  Flash: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" /></svg>,
+  AlertTriangle: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01" /></svg>,
+  Globe: () => <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path stroke="currentColor" strokeWidth="2" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10M12 2a15.3 15.3 0 00-4 10 15.3 15.3 0 004 10" /></svg>,
 };
 
 function getHash() { return window.location.hash.replace(/^#\/?/, "") || "overview"; }
@@ -55,15 +62,18 @@ function toastReducer(s, a) {
 }
 
 const PAGE_META = {
-  overview: { label: "Overview", icon: Icons.Home },
-  logs: { label: "Logs", icon: Icons.List },
-  metrics: { label: "Metrics", icon: Icons.Chart },
-  traces: { label: "Traces", icon: Icons.Target },
-  alerts: { label: "Alert Rules", icon: Icons.Bell },
-  incidents: { label: "Incidents", icon: Icons.Zap },
-  platform: { label: "Platform", icon: Icons.Server },
-  settings: { label: "Settings", icon: Icons.Settings },
-  bootstrap: { label: "Setup Wizard", icon: Icons.Shield },
+  overview:     { label: "Overview",            icon: Icons.Home          },
+  logs:         { label: "Logs",                icon: Icons.List          },
+  metrics:      { label: "Metrics",             icon: Icons.Chart         },
+  traces:       { label: "Traces",              icon: Icons.Target        },
+  transactions:  { label: "Transactions",        icon: Icons.Flash         },
+  "service-map": { label: "Service Map",          icon: Icons.Globe         },
+  errors:       { label: "Error Inbox",         icon: Icons.AlertTriangle },
+  alerts:       { label: "Alert Rules",         icon: Icons.Bell          },
+  incidents:    { label: "Incidents",           icon: Icons.Zap           },
+  platform:     { label: "Platform",            icon: Icons.Server        },
+  settings:     { label: "Settings",            icon: Icons.Settings      },
+  bootstrap:    { label: "Setup Wizard",        icon: Icons.Shield        },
 };
 
 function ToastStack({ toasts, dismiss }) {
@@ -103,16 +113,18 @@ function SideNav({ route, navigate, state, onLogout }) {
   const tenantNav = [
     {
       group: "Observability", items: [
-        { path: "overview", label: "Dashboard" },
-        { path: "logs", label: "Logs Explorer" },
-        { path: "metrics", label: "Metrics" },
-        { path: "traces", label: "Distributed Traces" },
+        { path: "overview",      label: "Dashboard"         },
+        { path: "logs",          label: "Logs Explorer"     },
+        { path: "metrics",       label: "Metrics"           },
+        { path: "traces",        label: "Distributed Traces"},
+        { path: "transactions",  label: "Transactions"      },
+        { path: "errors",        label: "Error Inbox"       },
       ]
     },
     {
       group: "Reliability", items: [
         { path: "incidents", label: "Active Incidents" },
-        { path: "alerts", label: "Alert Rules" },
+        { path: "alerts",    label: "Alert Rules"      },
       ]
     },
     {
@@ -177,16 +189,19 @@ function RouteView({ route, state, setState, notify }) {
   const props = { state, setState, notify };
   if (!state.token && route !== "bootstrap") return <LoginPage {...props} />;
   switch (route) {
-    case "bootstrap": return <BootstrapPage {...props} />;
-    case "overview": return <OverviewPage  {...props} />;
-    case "logs": return <LogsPage      {...props} />;
-    case "metrics": return <MetricsPage   {...props} />;
-    case "traces": return <TracesPage    {...props} />;
-    case "alerts": return <AlertsPage    {...props} />;
-    case "incidents": return <IncidentsPage {...props} />;
-    case "platform": return <PlatformPage  {...props} />;
-    case "settings": return <SettingsPage  {...props} />;
-    default: return <OverviewPage  {...props} />;
+    case "bootstrap":    return <BootstrapPage    {...props} />;
+    case "overview":     return <OverviewPage      {...props} />;
+    case "logs":         return <LogsPage          {...props} />;
+    case "metrics":      return <MetricsPage        {...props} />;
+    case "traces":       return <TracesPage         {...props} />;
+    case "transactions":  return <TransactionsPage  {...props} />;
+    case "service-map":   return <ServiceMapPage     {...props} />;
+    case "errors":       return <ErrorsPage         {...props} />;
+    case "alerts":       return <AlertsPage         {...props} />;
+    case "incidents":    return <IncidentsPage      {...props} />;
+    case "platform":     return <PlatformPage       {...props} />;
+    case "settings":     return <SettingsPage       {...props} />;
+    default:             return <OverviewPage        {...props} />;
   }
 }
 

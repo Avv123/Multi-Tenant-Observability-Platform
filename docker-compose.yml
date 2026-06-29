@@ -268,6 +268,27 @@ services:
       timeout: 5s
       retries: 20
 
+  # ClickHouse Web UI — full table/schema browser + SQL editor
+  # Access at http://localhost:5521
+  ch-ui:
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    container_name: pulselens-ch-ui
+    restart: unless-stopped
+    ports:
+      - "5521:3488"
+    environment:
+      CLICKHOUSE_URL: "http://clickhouse:8123"
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER:-omniful}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:-omniful}"
+      VITE_CLICKHOUSE_URL: "http://clickhouse:8123"
+      VITE_CLICKHOUSE_USER: "${CLICKHOUSE_USER:-omniful}"
+      VITE_CLICKHOUSE_PASS: "${CLICKHOUSE_PASSWORD:-omniful}"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 0.25
+
 # I2: Named volumes keep data persistent across docker compose down/up.
 # This is essential for backup/restore drills since data must survive a
 # restart for there to be anything meaningful to back up and restore.

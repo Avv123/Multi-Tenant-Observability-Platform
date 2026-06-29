@@ -225,10 +225,21 @@ func buildFilters(ctx *gin.Context) observabilityrequests.Filters {
 	if offset < 0 {
 		offset = 0
 	}
+
+	// Accept explicit RFC3339 start/end times
 	startTime, _ := time.Parse(time.RFC3339, ctx.Query("start_time"))
 	endTime, _ := time.Parse(time.RFC3339, ctx.Query("end_time"))
+
+	// If no explicit start_time, derive it from lookback_minutes (what the UI sends)
+	if startTime.IsZero() {
+		if mins, err := strconv.Atoi(ctx.Query("lookback_minutes")); err == nil && mins > 0 {
+			startTime = time.Now().UTC().Add(-time.Duration(mins) * time.Minute)
+		}
+	}
+
 	return observabilityrequests.Filters{
 		ServiceID:   ctx.Query("service_id"),
+		ServiceName: ctx.Query("service_name"),
 		Environment: ctx.Query("environment"),
 		Severity:    ctx.Query("severity"),
 		MetricName:  ctx.Query("metric_name"),
@@ -239,6 +250,24 @@ func buildFilters(ctx *gin.Context) observabilityrequests.Filters {
 		StartTime:   startTime,
 		EndTime:     endTime,
 	}
+}
+
+func (c *Controller) ListTransactions(ctx *gin.Context) {
+	rows, customError := c.service.ListTransactions(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
+}
+
+func (c *Controller) ListErrorGroups(ctx *gin.Context) {
+	rows, customError := c.service.ListErrorGroups(ctx, claimsFromContext(ctx), buildFilters(ctx))
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, rows)
 }
 
 func statusCode(code errs.Code) int {
@@ -252,4 +281,17 @@ func statusCode(code errs.Code) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+func (c *Controller) GetServiceMap(ctx *gin.Context) {
+	lookback, _ := strconv.Atoi(ctx.DefaultQuery("lookback_minutes", "60"))
+	if lookback <= 0 {
+		lookback = 60
+	}
+	topology, customError := c.service.GetServiceMap(ctx, claimsFromContext(ctx), lookback)
+	if customError.Exists() {
+		platformresponse.Error(ctx, statusCode(customError.Code()), customError)
+		return
+	}
+	platformresponse.Success(ctx, topology)
 }

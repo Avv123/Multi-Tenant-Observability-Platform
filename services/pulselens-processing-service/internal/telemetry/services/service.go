@@ -80,13 +80,11 @@ func (s *Service) HandleMessage(ctx context.Context, message *sarama.ConsumerMes
 	if err = s.persistEnvelope(ctx, envelope); err != nil {
 		if isDuplicateError(err) {
 			_ = cache.Get().Set(ctx, dedupeKey(envelope.TenantID, envelope.EventID), "done", 24*time.Hour).Err()
-			s.releasePending(ctx, envelope.EventType)
 			return nil
 		}
 		return s.retryOrDLQ(ctx, envelope, err)
 	}
 	_ = cache.Get().Set(ctx, dedupeKey(envelope.TenantID, envelope.EventID), "done", 24*time.Hour).Err()
-	s.releasePending(ctx, envelope.EventType)
 	_ = s.repository.IncrementUsage(ctx, envelope.TenantID, envelope.ServiceID, string(envelope.EventType))
 	// B2: archive write is decoupled from the Kafka consumer goroutine.
 	// A slow or unavailable MinIO will no longer stall processing throughput.
@@ -211,7 +209,6 @@ func (s *Service) retryOrDLQ(ctx context.Context, envelope pulsetelemetry.Envelo
 	}); err != nil {
 		return err
 	}
-	s.releasePending(ctx, envelope.EventType)
 	return nil
 }
 
