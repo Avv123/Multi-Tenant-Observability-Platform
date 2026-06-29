@@ -3,12 +3,12 @@ set -euo pipefail
 
 CLICKHOUSE_URL="${CLICKHOUSE_URL:-http://127.0.0.1:8123}"
 CLICKHOUSE_DB="${CLICKHOUSE_DB:-pulselens}"
-CLICKHOUSE_USER="${CLICKHOUSE_USER:-omniful}"
-CLICKHOUSE_PASSWORD="${CLICKHOUSE_PASSWORD:-omniful}"
+CLICKHOUSE_USER="${CLICKHOUSE_USER:-pulselens}"
+CLICKHOUSE_PASSWORD="${CLICKHOUSE_PASSWORD:-pulselens}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-docker compose exec -T postgres psql -U omniful -d pulselens -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+docker compose exec -T postgres psql -U pulselens -d pulselens -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 python3 - "${CLICKHOUSE_URL}" "${CLICKHOUSE_DB}" "${CLICKHOUSE_USER}" "${CLICKHOUSE_PASSWORD}" <<'PY'
 import json

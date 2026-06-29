@@ -94,9 +94,6 @@ github.com/newrelic/go-agent/v3/integrations/nrpq v1.1.1/go.mod h1:UvI7Z0Dok/36E
 github.com/newrelic/go-agent/v3/integrations/nrredis-v8 v1.0.3 h1:Zd8v8eoESlTy7XIpopqqMiQ6uMEsU683LDR4N+/EAA8=
 github.com/newrelic/go-agent/v3/integrations/nrredis-v8 v1.0.3/go.mod h1:CtpXSj7w4X2n0et/UifyhLOKwEtvPajyaUKPl9IXJGY=
 github.com/nyaruka/phonenumbers v1.6.6/go.mod h1:7gjs+Lchqm49adhAKB5cdcng5ZXgt6x7Jgvi0ZorUtU=
-github.com/omniful/event-registry v0.0.23/go.mod h1:/xERkR47rs4biw3odLcLU24xj5OmpFI3J0lQZIIynuI=
-github.com/omniful/go_commons v0.7.87 h1:yncjetKvb6mBzHA/+AnuClfDzpYldAL+GX3sRXU5sf8=
-github.com/omniful/go_commons v0.7.87/go.mod h1:fqTUtTqZiJiJD9idi8IaaXXiU97bZZ0SrdfKMejNhK4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/prometheus/client_golang v1.19.1/go.mod h1:mP78NwGzrVks5S2H6ab8+ZZGJLZUq1hoULYBAYBw1Ho=

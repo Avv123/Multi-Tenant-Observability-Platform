@@ -14,7 +14,7 @@ PulseLens is a multi-tenant observability platform built to handle logs, metrics
 ## Project Constraints
 
 - zero recurring infrastructure cost for the primary runtime
-- architecture style kept close to Omniful-style Go services
+- architecture style kept close to production-style Go services
 - end result should behave like a production-shaped backend, not a toy demo
 
 ## What To Read Next
